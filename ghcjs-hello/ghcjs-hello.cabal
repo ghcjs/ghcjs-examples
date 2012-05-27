@@ -1,0 +1,18 @@
+name: ghcjs-hello
+version: 0.0.1
+cabal-version: >=1.2
+build-type: Simple
+license: AllRightsReserved
+license-file: ""
+description:
+data-dir: ""
+
+executable ghcjs-hello
+    build-depends: base -any, blaze-html -any, filepath -any,
+                   ghc-prim -any, ghcjs -any, hamlet -any, shakespeare-js -any,
+                   text -any, blaze-markup -any
+    main-is: Main.hs
+    buildable: True
+    hs-source-dirs: src
+    other-modules: JS
+
