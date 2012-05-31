@@ -11,14 +11,13 @@ import Text.Hamlet.RT (renderHamletRT, parseHamletRT)
 import Data.Text.Lazy.IO (writeFile)
 import System.FilePath ((</>))
 import Paths_ghcjs_hello (getBinDir)
-import JS
 import Generator.Minify (minify, defaultMinify)
 import System.Environment (getArgs)
 
 main = do
     args <- getArgs
     binDir <- getBinDir
-    let jsexe = binDir </> "ghcjs-hello.jsexe"
+    let jsexe = binDir </> "ghcjs-hello-js.jsexe"
     writeFile (jsexe </> "hello.js") $ renderJavascript $ [julius|
             var link = function(f, inputId, outputId) {
                 var input = document.getElementById(inputId);
@@ -44,8 +43,10 @@ main = do
                         $hs_runIO([f, input.value], function(str) {
                             $hs_fromLazyText([str],
                                 function(result) {
+                                    console.log("got result");
+                                    console.log(result);
                                     document.getElementById(outputId).innerHTML = result;});});
-                    }
+                              }
                     input.onkeydown = run;
                     input.onkeyup = run;
                     input.onchange = run;
