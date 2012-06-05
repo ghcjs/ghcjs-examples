@@ -1,26 +1,29 @@
 {-# LANGUAGE TemplateHaskell, QuasiQuotes, OverloadedStrings, MagicHash, OverloadedStrings #-}
-module JS (
+module Main (
     hello
   , validatePrime
   , tryHamlet
+  , main
 ) where
 
 import Text.Hamlet (defaultHamletSettings, shamlet, Html)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
-import Data.Text.Lazy (Text, pack, append)
+import Data.Text.Lazy (Text, append, unpack)
 import Text.Hamlet.RT (renderHamletRT, parseHamletRT)
 import GHC.Prim
 import GHC.CString (unpackCString#)
 
 type CString = Addr#
 
+main = return ()
+
 -- This example is here to show that you can create
 -- small simple functions if that is what you want.
 -- The function level linking and bundling will
 -- minimize the amount of Java Script downloaded
 -- when they are called.
-hello :: CString -> Text
-hello x = "Hello " `append` pack (unpackCString# x)
+hello :: Text -> Text
+hello x = "Hello " `append` x
 
 -- This "validatePrime" example uses
 --  * integer-gmp (implemented using goog.math.Integer)
@@ -35,8 +38,8 @@ validatePrime' :: Integer -> Html
 validatePrime' p | isPrime p = [shamlet|<b>Yes</b>, #{p} is a prime|]
                  | otherwise = [shamlet|<b>No</b>, #{p} is not a prime|]
 
-validatePrime :: CString -> Text
-validatePrime n = renderHtml . validatePrime' . read $ unpackCString# n
+validatePrime :: Text -> Text
+validatePrime n = renderHtml . validatePrime' . read $ unpack n
 
 -- This "tryHaskell" example runs the Hamlet parser on the client
 -- this needs more JS code than the rest, but it is not loaded until

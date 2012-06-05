@@ -23,7 +23,7 @@ main = do
                 var input = document.getElementById(inputId);
                 var setup = function() {
                     var run = function() {
-                        $hs_fromLazyText([f, input.value],
+                        $hs_fromLazyText([f, $hs_toLazyText(input.value)],
                             function(result) {
                                 document.getElementById(outputId).innerHTML = result;});
                     }
@@ -43,8 +43,6 @@ main = do
                         $hs_runIO([f, input.value], function(str) {
                             $hs_fromLazyText([str],
                                 function(result) {
-                                    console.log("got result");
-                                    console.log(result);
                                     document.getElementById(outputId).innerHTML = result;});});
                               }
                     input.onkeydown = run;
@@ -63,13 +61,11 @@ main = do
                 // Must be called first
                 $hs_init();
 
-                link  ($$$JS_hello,         "name",     "hello");
-                link  ($$$JS_validatePrime, "num",      "prime");
-                linkIO($$$JS_tryHamlet,     "hamletIn", "hamletOut");
+                link  ($$$Main_hello,         "name",     "hello");
+                link  ($$$Main_validatePrime, "num",      "prime");
+                linkIO($$$Main_tryHamlet,     "hamletIn", "hamletOut");
             }
         |] ()
-
-    minify jsexe [jsexe </> "hello.js"] defaultMinify args
 
     writeFile (jsexe </> "index.html") $ renderHtml [shamlet|
       <html>
@@ -88,13 +84,15 @@ main = do
                 goog.require('goog.math.Integer');
                 goog.require('goog.debug.Logger');
                 goog.require('goog.debug.Console');
-            <script type="text/javascript" src="rts.jso/rts-options.js">
-            <script type="text/javascript" src="rts.jso/rts-common.js">
-            <script type="text/javascript" src="rts.jso/rts-trampoline.js">
+            <script type="text/javascript" src="../rts/rts-options.js">
+            <script type="text/javascript" src="../rts/rts-common.js">
+            <script type="text/javascript" src="../rts/rts-trampoline.js">
             <script type="text/javascript" src="hsloader.js">
             <script type="text/javascript" src="hello.js">
             <title>GHCJS Examples
         #{body}|]
+
+    minify jsexe [jsexe </> "hello.js"] defaultMinify args
   where
     body = [shamlet|
         <body #slideBody>
