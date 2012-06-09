@@ -40,7 +40,7 @@ main = do
                 var input = document.getElementById(inputId);
                 var setup = function() {
                     var run = function() {
-                        $hs_runIO([f, input.value], function(str) {
+                        $hs_runIO([f, $hs_toString(input.value)], function(str) {
                             $hs_fromLazyText([str],
                                 function(result) {
                                     document.getElementById(outputId).innerHTML = result;});});

@@ -8,7 +8,7 @@ module Main (
 
 import Text.Hamlet (defaultHamletSettings, shamlet, Html)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
-import Data.Text.Lazy (Text, append, unpack)
+import Data.Text.Lazy as LT (Text, concat, unpack)
 import Text.Hamlet.RT (renderHamletRT, parseHamletRT)
 import GHC.Prim
 import GHC.CString (unpackCString#)
@@ -23,7 +23,7 @@ main = return ()
 -- minimize the amount of Java Script downloaded
 -- when they are called.
 hello :: Text -> Text
-hello x = "Hello " `append` x
+hello x = LT.concat ["Hello ", x]
 
 -- This "validatePrime" example uses
 --  * integer-gmp (implemented using goog.math.Integer)
@@ -44,9 +44,9 @@ validatePrime n = renderHtml . validatePrime' . read $ unpack n
 -- This "tryHaskell" example runs the Hamlet parser on the client
 -- this needs more JS code than the rest, but it is not loaded until
 -- it is used.
-tryHamlet :: CString -> IO Text
+tryHamlet :: String -> IO Text
 tryHamlet h = do
-    rt   <- parseHamletRT defaultHamletSettings (unpackCString# h)
+    rt   <- parseHamletRT defaultHamletSettings h
     html <- renderHamletRT rt [] (\_ _ -> "")
     return $ renderHtml html
 
