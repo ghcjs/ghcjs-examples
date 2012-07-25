@@ -1,0 +1,15 @@
+name:                fay-hello-js
+version:             0.1.0.0
+license:             BSD3
+license-file:        LICENSE
+build-type:          Simple
+cabal-version:       >=1.8
+
+library
+  build-depends: base >= 4 && < 5, transformers, template-haskell
+  exposed-modules: Paths_fay_hello_js
+
+executable fay-hello-js
+  build-depends:       base >= 4 && < 5, fay, blaze-html ==0.5.*, text ==0.11.*, ghc-prim ==0.2.*, transformers, template-haskell
+  Main-Is: Main.hs
+
