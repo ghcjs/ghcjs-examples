@@ -1,0 +1,15 @@
+name: webkit-hello
+version: 0.0.1
+cabal-version: >=1.2
+build-type: Simple
+license: AllRightsReserved
+license-file: ""
+description:
+data-dir: ""
+
+executable webkit-hello
+    build-depends: QuickCheck -any, base -any, glib -any, gtk -any, webkit -any, mtl -any
+    main-is: Main.hs
+    buildable: True
+    hs-source-dirs: src
+    ghc-options: -threaded -rtsopts
