@@ -24,7 +24,12 @@ inside (x, y) ((ox, oy), (wx, wy)) =
     x >= ox - wx && x <= ox + wx &&
     y >= oy - wy && y <= oy + wy
 
-infixr 5 :++
+-- | This tree structure is used to give a list of behaviours from different
+-- parts of the FRP logic, so the engine can efficiently draw only the things
+-- that have changed. This could be done just as a plain old list, this is a
+-- bit more flexible, and also, it allows for us to later add the ability to
+-- switch subtrees by means of Sodium's switch primitive.
 data BehaviorTree a = BehaviorTree a :++ BehaviorTree a
                     | BehaviorNode (Behavior a)
+infixr 5 :++
 

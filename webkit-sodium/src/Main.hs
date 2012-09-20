@@ -34,8 +34,10 @@ main = do
   webView <- mainWebView               -- window
   doc <- webViewGetDomDocument webView -- webView.document
   Just body <- documentGetBody doc     -- doc.body
-  htmlElementSetInnerHTML body         -- body.setInnerHTML
-    "Haskell Freecell<div style=\"position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px\" id=\"test\"></div></div>"
+  htmlElementSetInnerHTML body $       -- body.setInnerHTML
+    "Haskell Freecell"++
+    "<div style=\"position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px\" "++
+    "id=\"test\"></div>"
   Just div <- fmap castToHTMLElement <$>
     documentGetElementById doc "test"  -- doc.getElementById
   unlisten <- engine doc div =<< mkFreecell
