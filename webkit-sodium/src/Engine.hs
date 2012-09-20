@@ -8,7 +8,7 @@ import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
        (htmlElementInsertAdjacentElement, htmlElementSetInnerHTML,
         htmlElementInsertAdjacentHTML)
 import Graphics.UI.Gtk.WebKit.Types (castToHTMLElement, castToElement, Document,
-        HTMLElement, ElementClass, MouseEventClass)
+        HTMLElement, ElementClass, MouseEventClass, gTypeElement)
 import Control.Applicative ((<$>))
 import Control.Arrow
 import Control.Monad.Trans ( liftIO )
@@ -16,6 +16,7 @@ import Graphics.UI.Gtk.General.Enums (WindowPosition(..))
 import Graphics.UI.Gtk.WebKit.DOM.Element
 import Graphics.UI.Gtk.WebKit.DOM.EventM
 import Graphics.UI.Gtk.WebKit.DOM.Node
+import System.Glib.GObject (isA)
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.IORef
@@ -30,15 +31,17 @@ import Game
 scale = 1/4
 worldLeft = -1400
 worldTop  = 1000
-toWorld (x,y) = (x / scale + worldLeft, worldTop - y / scale)
+toWorld :: (Int, Int) -> (Double, Double)
+toWorld (x,y) = (fromIntegral x / scale + worldLeft, worldTop - fromIntegral y / scale)
+fromWorldRect :: Rect -> ((Int,Int),(Int,Int))
 fromWorldRect ((xOrig,yOrig),(wid,hei)) = (
         (
-            (left - worldLeft) * scale,
-            (worldTop - top) * scale
+            round $ (left - worldLeft) * scale,
+            round $ (worldTop - top) * scale
         ),
         (
-            wid * scale * 2,
-            hei * scale * 2
+            round $ wid * scale * 2,
+            round $ hei * scale * 2
         )
     )
   where
@@ -48,24 +51,31 @@ fromWorldRect ((xOrig,yOrig),(wid,hei)) = (
 -- | Get the mouse position in world co-ordinates relative to the top-left corner of
 -- the specified HTML element.
 getXYRelativeTo :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
-                   elt -> EventM e t (Double, Double) 
+                   elt -> EventM e t (Maybe (Int, Int)) 
 getXYRelativeTo container = do
-    (x, y) <- mouseOffsetXY
-    mt <- mouseToElement
-    liftIO $ do
-        case mt of
-            Just t -> do
-                tleft <- elementGetOffsetLeft (castToElement t)
-                ttop <- elementGetOffsetTop (castToElement t)
-                hitContainer <- nodeIsEqualNode container (Just t)
-                -- We want our position relative to the top/left of the container.
-                -- If we hit the container, then we already have it.
-                -- If not, then we assume it's one of the images we created, and
-                -- we add its offset relative to its parent (the container).
-                let x' = if hitContainer then x else x + tleft
-                    y' = if hitContainer then y else y + ttop
-                return $ toWorld $ (fromIntegral *** fromIntegral) (x', y')
-            Nothing -> return (-1,-1)
+    xy <- mouseOffsetXY        -- xy position relative to target element
+    mTarget <- mouseToElement  -- target element
+    liftIO $ case mTarget of
+        Just target0 | target0 `isA` gTypeElement -> do
+            let target = castToElement target0
+            relativeToContainer target xy
+        _ -> return Nothing
+  where
+    -- Starting with the xy position relative to the target element, we walk up the DOM
+    -- tree, adding each element's offset relative to its parent, until we reach the
+    -- container. This gives us the xy mouse position relative to the container.
+    relativeToContainer target (x, y) = do
+        isCont <- nodeIsEqualNode container (Just target)
+        if isCont
+            then return (Just (x, y))
+            else do
+                mParent <- nodeGetParentElement target
+                case mParent of
+                    Just parent -> do
+                        left <- elementGetOffsetLeft target
+                        top <- elementGetOffsetTop target
+                        relativeToContainer parent (x + left, y + top)
+                    Nothing -> return Nothing
 
 -- The game logic expects alternating down-up-down-up, but the browser can produce
 -- bad sequences like down-up-down-down-up. So we sanitize the input.
@@ -95,14 +105,20 @@ engine doc container game = do
 
     -- Listen to mouse events from WebKit
     elementOnmousedown container $ do
-        xy <- getXYRelativeTo container
-        liftIO $ sanitize Down $ sync $ pushMouse $ MouseDown xy
+        mXY <- getXYRelativeTo container
+        case mXY of
+            Just xy -> liftIO . sanitize Down . sync . pushMouse . MouseDown . toWorld $ xy
+            Nothing -> return ()
     elementOnmousemove container $ do
-        xy <- getXYRelativeTo container
-        liftIO $ sync $ pushMouse $ MouseMove xy
+        mXY <- getXYRelativeTo container
+        case mXY of
+            Just xy -> liftIO . sync . pushMouse . MouseMove . toWorld $ xy
+            Nothing -> return ()
     elementOnmouseup container $ do
-        xy <- getXYRelativeTo container
-        liftIO $ sanitize Up $ sync $ pushMouse $ MouseUp xy
+        mXY <- getXYRelativeTo container
+        case mXY of
+            Just xy -> liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ xy
+            Nothing -> return ()
 
     -- Instantiate the FRP logic: We give it our mouse event, and it gives us back the
     -- sprite behaviours that tell us what to draw on the screen.
