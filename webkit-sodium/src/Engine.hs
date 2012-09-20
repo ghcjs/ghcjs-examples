@@ -121,5 +121,5 @@ showAll doc div sprites = evalStateT (showEach sprites) (-1000000)
             "-ms-user-select: none;"++
             "user-select: none"
     associate elt fn =
-        elementSetAttribute elt "src" ("http://localhost/"++fn)
+        elementSetAttribute elt "src" ("http://hip-to-be-square.com/~blackh/"++fn)
 
