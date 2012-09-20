@@ -158,8 +158,8 @@ showAll doc container sprites =
                 let toAdd = drop (length last) these
                     toRemove = drop (length these) (map fst last)
                     toModify = zip these last
-                    keptSpans = map (\(_, (elt, _)) -> elt) toModify
-                    noOfKeptSpans = length keptSpans
+                    keptImgs = map (\(_, (elt, _)) -> elt) toModify
+                    noOfKeptImgs = length keptImgs
                 -- If there are fewer elements than last time, we delete the excess ones.
                 mapM_ (nodeRemoveChild container . Just) toRemove
                 -- If the first n sprites exist in both the old and new list, we
@@ -171,15 +171,15 @@ showAll doc container sprites =
                         when (oldFn /= newFn)     $ associate elt newFn
                     ) [zIxRoot..] toModify
                 -- If there are more elements than last time, we create the new ones
-                addedSpans <- sequence $ zipWith (\zIx sprite@(rect, fn) -> do
+                addedImgs <- sequence $ zipWith (\zIx sprite@(rect, fn) -> do
                         Just elt <- fmap castToHTMLElement <$> documentCreateElement doc "img"
                         position elt rect zIx
                         associate elt fn
                         elementSetAttribute elt "draggable" "false"
                         nodeAppendChild container (Just elt)
                         return elt
-                    ) [zIxRoot + noOfKeptSpans..] toAdd
-                writeIORef lastRef (zip (keptSpans ++ addedSpans) these)
+                    ) [zIxRoot + noOfKeptImgs..] toAdd
+                writeIORef lastRef (zip (keptImgs ++ addedImgs) these)
             return unlisten
     -- Set the necessary attributes to position the image according to the specified
     -- rectangle
