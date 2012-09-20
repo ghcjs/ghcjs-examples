@@ -48,8 +48,8 @@ fromWorldRect ((xOrig,yOrig),(wid,hei)) = (
     left = xOrig - wid
     top  = yOrig + hei
 
--- | Get the mouse position in world co-ordinates relative to the top-left corner of
--- the specified HTML element.
+-- | Get the mouse position relative to the top-left corner of the specified
+-- HTML element.
 getXYRelativeTo :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
                    elt -> EventM e t (Maybe (Int, Int)) 
 getXYRelativeTo container = do
