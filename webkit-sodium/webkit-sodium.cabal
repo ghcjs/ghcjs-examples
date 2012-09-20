@@ -1,0 +1,16 @@
+name: webkit-sodium
+version: 0.0.1
+cabal-version: >=1.2
+build-type: Simple
+license: AllRightsReserved
+license-file: ""
+description:
+data-dir: ""
+
+executable freecell
+    build-depends: QuickCheck -any, base -any, glib -any, gtk -any, webkit -any, mtl -any,
+                   sodium -any, array -any, filepath -any, random -any
+    main-is: Main.hs
+    buildable: True
+    hs-source-dirs: src
+    ghc-options: -threaded -rtsopts
