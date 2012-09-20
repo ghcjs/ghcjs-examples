@@ -7,7 +7,7 @@ import Graphics.UI.Gtk.WebKit.DOM.Document
 import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
        (htmlElementInsertAdjacentElement, htmlElementSetInnerHTML,
         htmlElementInsertAdjacentHTML)
-import Graphics.UI.Gtk.WebKit.Types (castToHTMLElement, Document,
+import Graphics.UI.Gtk.WebKit.Types (castToHTMLElement, castToElement, Document,
         HTMLElement, ElementClass, MouseEventClass)
 import Control.Applicative ((<$>))
 import Control.Arrow
@@ -47,14 +47,25 @@ fromWorldRect ((xOrig,yOrig),(wid,hei)) = (
 
 -- | Get the mouse position in world co-ordinates relative to the top-left corner of
 -- the specified HTML element.
-getXYRelativeTo :: (ElementClass elt, MouseEventClass e) =>
+getXYRelativeTo :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
                    elt -> EventM e t (Double, Double) 
 getXYRelativeTo container = do
-    (x0, y0) <- mouseClientXY
+    (x, y) <- mouseOffsetXY
+    mt <- mouseToElement
     liftIO $ do
-        top <- elementGetOffsetTop container
-        left <- elementGetOffsetLeft container
-        return $ toWorld $ (fromIntegral *** fromIntegral) (x0 - left, y0 - top)
+        case mt of
+            Just t -> do
+                tleft <- elementGetOffsetLeft (castToElement t)
+                ttop <- elementGetOffsetTop (castToElement t)
+                hitContainer <- nodeIsEqualNode container (Just t)
+                -- We want our position relative to the top/left of the container.
+                -- If we hit the container, then we already have it.
+                -- If not, then we assume it's one of the images we created, and
+                -- we add its offset relative to its parent (the container).
+                let x' = if hitContainer then x else x + tleft
+                    y' = if hitContainer then y else y + ttop
+                return $ toWorld $ (fromIntegral *** fromIntegral) (x', y')
+            Nothing -> return (-1,-1)
 
 -- The game logic expects alternating down-up-down-up, but the browser can produce
 -- bad sequences like down-up-down-down-up. So we sanitize the input.

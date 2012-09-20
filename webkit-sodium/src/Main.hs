@@ -37,7 +37,7 @@ main = do
   htmlElementSetInnerHTML body $       -- body.setInnerHTML
     "Haskell Freecell"++
     "<div style=\"position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px\" "++
-    "id=\"test\"></div>"
+    "id=\"test\" draggable=\"false\"></div>"
   Just div <- fmap castToHTMLElement <$>
     documentGetElementById doc "test"  -- doc.getElementById
   unlisten <- engine doc div =<< mkFreecell
