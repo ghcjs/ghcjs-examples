@@ -2,28 +2,24 @@ module Main (
     main
 ) where
 
-import Graphics.UI.Gtk
-       (widgetShowAll, mainQuit, onDestroy, containerAdd,
-        scrolledWindowNew, windowSetPosition, windowSetDefaultSize,
-        windowNew, mainGUI, initGUI)
 import Graphics.UI.Gtk.WebKit.WebView
        (webViewNew, webViewGetDomDocument)
 import Graphics.UI.Gtk.WebKit.DOM.Document
        (documentCreateElement, documentGetElementById, documentGetBody)
 import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
-       (htmlElementInsertAdjacentElement, htmlElementSetInnerHTML)
+       (htmlElementGetInnerHTML, htmlElementInsertAdjacentElement,
+        htmlElementSetInnerHTML)
 import Graphics.UI.Gtk.WebKit.Types (castToHTMLElement)
 import Control.Applicative ((<$>))
 import Control.Monad.Trans ( liftIO )
 import Graphics.UI.Gtk.General.Enums (WindowPosition(..))
 import Graphics.UI.Gtk.WebKit.DOM.Element (elementOnclick)
 import Graphics.UI.Gtk.WebKit.DOM.EventM (mouseXY, target)
+import Graphics.UI.Gtk.WebKit.GHCJS (runWebGUI)
 
 -- Comments show how what these FFI calls should work when the
 -- code compiled is compiled with GHCJS
-main = do
-  initGUI
-  webView <- mainWebView               -- window
+main = runWebGUI $ \ webView -> do
   doc <- webViewGetDomDocument webView -- webView.document
   Just body <- documentGetBody doc     -- doc.body
   htmlElementSetInnerHTML body         -- body.setInnerHTML
@@ -41,25 +37,7 @@ main = do
       -- target.insertAdjacentElement
       htmlElementInsertAdjacentElement target "afterEnd" (Just div)
       return ()
-  mainGUI
-
--- On browser this function just needs to return "window"
-mainWebView = do
-  window <- windowNew
-  windowSetDefaultSize window 900 600
-  windowSetPosition window WinPosCenter
-  scrollWin <- scrolledWindowNew Nothing Nothing
-  webView <- webViewNew
-  window `containerAdd` scrollWin
-  scrollWin `containerAdd` webView
-  window `onDestroy` mainQuit
-  widgetShowAll window
-  return webView
-
-
-
-
-
+  return ()
 
 
 

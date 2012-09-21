@@ -8,7 +8,12 @@ description:
 data-dir: ""
 
 executable webkit-hello
-    build-depends: QuickCheck -any, base -any, glib -any, gtk -any, webkit -any, mtl -any
+    build-depends: base -any,
+                   glib -any,
+                   gtk -any,
+                   webkit >= 0.12.5,
+                   ghcjs-dom -any,
+                   mtl -any
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
