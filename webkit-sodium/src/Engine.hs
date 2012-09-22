@@ -203,5 +203,5 @@ showAll doc container sprites =
             "user-select: none"
     -- Associate the image element with a URL, i.e. set its appearance.
     associate elt fn =
-        elementSetAttribute elt "src" ("http://ghcjs.github.com/cards/"++fn)
+        elementSetAttribute elt "src" ("http://ghcjs.github.com/"++fn)
 
