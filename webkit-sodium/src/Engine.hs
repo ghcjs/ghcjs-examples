@@ -51,7 +51,7 @@ fromWorldRect ((xOrig,yOrig),(wid,hei)) = (
 -- | Get the mouse position relative to the top-left corner of the specified
 -- HTML element.
 getXYRelativeTo :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
-                   elt -> EventM e t (Maybe (Int, Int)) 
+                   elt -> EventM e t (Maybe (Int, Int))
 getXYRelativeTo container = do
     xy <- mouseOffsetXY        -- xy position relative to target element
     mTarget <- mouseToElement  -- target element
@@ -95,7 +95,7 @@ data ButtonState = Up | Down deriving Eq
 -- | Instantiate the game, handling mouse events and drawing the output.
 -- Returns an \'unlisten\' action to de-register listeners.
 engine :: ElementClass elt =>
-          Document -> elt -> (Event MouseEvent -> Reactive (BehaviorTree [Sprite])) -> IO (IO ()) 
+          Document -> elt -> (Event MouseEvent -> Reactive (BehaviorTree [Sprite])) -> IO (IO ())
 engine doc container game = do
     -- Construct a mouse event that lives in FRP land, and a push action
     -- that allows us to push values into it from IO land.
@@ -203,5 +203,5 @@ showAll doc container sprites =
             "user-select: none"
     -- Associate the image element with a URL, i.e. set its appearance.
     associate elt fn =
-        elementSetAttribute elt "src" ("http://hip-to-be-square.com/~blackh/"++fn)
+        elementSetAttribute elt "src" ("http://ghcjs.github.com/cards/"++fn)
 

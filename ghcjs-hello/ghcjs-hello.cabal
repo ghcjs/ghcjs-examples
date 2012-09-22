@@ -1,16 +1,25 @@
 name: ghcjs-hello
 version: 0.0.1
-cabal-version: >=1.2
+cabal-version: >=1.8
 build-type: Simple
 license: BSD3
 license-file: ""
 description:
 data-dir: ""
 
-executable ghcjs-hello
+library
     build-depends: base -any, blaze-html -any, filepath -any,
-                   hamlet -any, shakespeare-js -any,
-                   text -any, blaze-markup -any, ghcjs -any
+                   hamlet -any, text -any, blaze-markup -any, ghcjs -any,
+                   webkit >=0.12.5, ghcjs-dom -any, mtl -any, sodium -any,
+                   webkit-sodium -any
+    exposed-modules: JSMain
+    hs-source-dirs: src
+
+executable ghcjs-hello
+    build-depends: ghcjs-hello -any, base -any, blaze-html -any, filepath -any,
+                   hamlet -any, text -any, blaze-markup -any, ghcjs -any,
+                   webkit >=0.12.5, ghcjs-dom -any, mtl -any, sodium -any,
+                   webkit-sodium -any
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
