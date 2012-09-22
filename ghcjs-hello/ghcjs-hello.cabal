@@ -7,16 +7,8 @@ license-file: ""
 description:
 data-dir: ""
 
-library
-    build-depends: base -any, blaze-html -any, filepath -any,
-                   hamlet -any, text -any, blaze-markup -any, ghcjs -any,
-                   webkit >=0.12.5, ghcjs-dom -any, mtl -any, sodium -any,
-                   webkit-sodium -any
-    exposed-modules: JSMain
-    hs-source-dirs: src
-
 executable ghcjs-hello
-    build-depends: ghcjs-hello -any, base -any, blaze-html -any, filepath -any,
+    build-depends: base -any, blaze-html -any, filepath -any,
                    hamlet -any, text -any, blaze-markup -any, ghcjs -any,
                    webkit >=0.12.5, ghcjs-dom -any, mtl -any, sodium -any,
                    webkit-sodium -any
