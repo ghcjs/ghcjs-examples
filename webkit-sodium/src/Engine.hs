@@ -3,7 +3,8 @@ module Engine where
 import Graphics.UI.Gtk.WebKit.WebView
        (webViewNew, webViewGetDomDocument)
 import Graphics.UI.Gtk.WebKit.DOM.Document
-       (documentCreateElement, documentGetElementById, documentGetBody)
+       (documentCreateElement, documentGetElementById, documentGetBody,
+        documentGetDocumentElement)
 import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
        (htmlElementInsertAdjacentElement, htmlElementSetInnerHTML,
         htmlElementInsertAdjacentHTML)
@@ -15,11 +16,13 @@ import Control.Monad.Trans ( liftIO )
 import Graphics.UI.Gtk.General.Enums (WindowPosition(..))
 import Graphics.UI.Gtk.WebKit.DOM.Element
 import Graphics.UI.Gtk.WebKit.DOM.EventM
+import Graphics.UI.Gtk.WebKit.DOM.MouseEvent
 import Graphics.UI.Gtk.WebKit.DOM.Node
 import System.Glib.GObject (isA)
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.IORef
+import Data.Maybe
 
 import FRP.Sodium
 import Game
@@ -51,31 +54,41 @@ fromWorldRect ((xOrig,yOrig),(wid,hei)) = (
 -- | Get the mouse position relative to the top-left corner of the specified
 -- HTML element.
 getXYRelativeTo :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
-                   elt -> EventM e t (Maybe (Int, Int))
-getXYRelativeTo container = do
-    xy <- mouseOffsetXY        -- xy position relative to target element
-    mTarget <- mouseToElement  -- target element
-    liftIO $ case mTarget of
-        Just target0 | target0 `isA` gTypeElement -> do
-            let target = castToElement target0
-            relativeToContainer target xy
-        _ -> return Nothing
+                   Document -> elt -> EventM e t (Int, Int)
+getXYRelativeTo doc container = do
+    (px, py) <- mousePageXY doc container
+    liftIO $ do
+        (cx, cy) <- elementPageXY doc container
+        return (px - cx, py - cy)
+
+mousePageXY :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
+               Document -> elt -> EventM e t (Int, Int)
+mousePageXY doc container = do
+    (x, y) <- mouseClientXY
+    liftIO $ do
+	Just body <- documentGetBody doc     -- doc.body
+        bodyScrollLeft <- elementGetScrollLeft body
+        bodyScrollTop  <- elementGetScrollTop body
+        Just docElt <- documentGetDocumentElement doc
+        docEltScrollLeft <- elementGetScrollLeft docElt
+        docEltScrollTop <- elementGetScrollTop docElt
+        return (x + bodyScrollLeft + docEltScrollLeft, y + bodyScrollTop + docEltScrollTop)
+
+-- | Get the top/left position of this element relative to the page.
+elementPageXY :: ElementClass elt => Document -> elt -> IO (Int, Int)
+elementPageXY doc elt = do
+    Just body <- documentGetBody doc
+    traverse body (castToElement elt) (0,0)
   where
-    -- Starting with the xy position relative to the target element, we walk up the DOM
-    -- tree, adding each element's offset relative to its parent, until we reach the
-    -- container. This gives us the xy mouse position relative to the container.
-    relativeToContainer target (x, y) = do
-        isCont <- nodeIsEqualNode container (Just target)
-        if isCont
-            then return (Just (x, y))
+    traverse body elt (x, y) = do
+        eq <- nodeIsEqualNode elt (Just body)
+        if eq
+            then return (x, y)
             else do
-                mParent <- nodeGetParentElement target
-                case mParent of
-                    Just parent -> do
-                        left <- elementGetOffsetLeft target
-                        top <- elementGetOffsetTop target
-                        relativeToContainer parent (x + left, y + top)
-                    Nothing -> return Nothing
+                ox <- elementGetOffsetLeft elt
+                oy <- elementGetOffsetTop elt
+                Just parent <- elementGetOffsetParent elt
+                traverse body parent (x + ox, y + oy)
 
 -- The game logic expects alternating down-up-down-up, but the browser can produce
 -- bad sequences like down-up-down-down-up. So we sanitize the input.
@@ -97,6 +110,7 @@ data ButtonState = Up | Down deriving Eq
 engine :: ElementClass elt =>
           Document -> elt -> (Event MouseEvent -> Reactive (BehaviorTree [Sprite])) -> IO (IO ())
 engine doc container game = do
+    putStrLn "Haskell Freecell"
     -- Construct a mouse event that lives in FRP land, and a push action
     -- that allows us to push values into it from IO land.
     (eMouse, pushMouse) <- sync newEvent
@@ -105,20 +119,14 @@ engine doc container game = do
 
     -- Listen to mouse events from WebKit
     elementOnmousedown container $ do
-        mXY <- getXYRelativeTo container
-        case mXY of
-            Just xy -> liftIO . sanitize Down . sync . pushMouse . MouseDown . toWorld $ xy
-            Nothing -> return ()
+        xy <- getXYRelativeTo doc container
+        liftIO . sanitize Down . sync . pushMouse . MouseDown . toWorld $ xy
     elementOnmousemove container $ do
-        mXY <- getXYRelativeTo container
-        case mXY of
-            Just xy -> liftIO . sync . pushMouse . MouseMove . toWorld $ xy
-            Nothing -> return ()
+        xy <- getXYRelativeTo doc container
+        liftIO . sync . pushMouse . MouseMove . toWorld $ xy
     elementOnmouseup container $ do
-        mXY <- getXYRelativeTo container
-        case mXY of
-            Just xy -> liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ xy
-            Nothing -> return ()
+        xy <- getXYRelativeTo doc container
+        liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ xy
 
     -- Instantiate the FRP logic: We give it our mouse event, and it gives us back the
     -- sprite behaviours that tell us what to draw on the screen.
@@ -175,7 +183,7 @@ showAll doc container sprites =
                         Just elt <- fmap castToHTMLElement <$> documentCreateElement doc "img"
                         position elt rect zIx
                         associate elt fn
-                        elementSetAttribute elt "draggable" "false"
+                        elementSetAttribute elt "ondragstart" "return false"
                         nodeAppendChild container (Just elt)
                         return elt
                     ) [zIxRoot + noOfKeptImgs..] toAdd

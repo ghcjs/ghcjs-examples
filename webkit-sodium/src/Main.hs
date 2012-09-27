@@ -16,7 +16,9 @@ import Graphics.UI.Gtk.WebKit.DOM.Document
 import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
        (htmlElementInsertAdjacentElement, htmlElementSetInnerHTML,
         htmlElementInsertAdjacentHTML)
-import Graphics.UI.Gtk.WebKit.Types (castToHTMLElement)
+import Graphics.UI.Gtk.WebKit.Types (castToHTMLDivElement)
+import Graphics.UI.Gtk.WebKit.DOM.CSSStyleDeclaration
+       (cssStyleDeclarationSetProperty)
 import Control.Applicative ((<$>))
 import Control.Arrow
 import Control.Monad.Trans ( liftIO )
@@ -34,12 +36,18 @@ main = do
   unlisten <- runWebGUI $ \ webView -> do
     doc <- webViewGetDomDocument webView -- webView.document
     Just body <- documentGetBody doc     -- doc.body
-    htmlElementSetInnerHTML body $       -- body.setInnerHTML
-      "Haskell Freecell"++
-      "<div style=\"position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px\" "++
-      "id=\"test\" draggable=\"false\"></div>"
-    Just div <- fmap castToHTMLElement <$>
-      documentGetElementById doc "test"  -- doc.getElementById
+
+    -- If we are in the browser let's shrink the terminal window to make room
+    mbTerminal    <- fmap castToHTMLDivElement   <$> documentGetElementById doc "terminal"
+    case mbTerminal of
+      Just terminal -> do
+        Just style <- elementGetStyle terminal
+        cssStyleDeclarationSetProperty style "height" "100" ""
+      _             -> return ()
+
+    Just div <- fmap castToHTMLDivElement <$> documentCreateElement doc "div"
+    elementSetAttribute div "style" "position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px"
+    nodeAppendChild body (Just div)
     engine doc div =<< mkFreecell
   -- unlisten
   return ()
