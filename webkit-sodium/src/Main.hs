@@ -29,11 +29,12 @@ import Control.Monad
 import System.Random
 import FRP.Sodium
 import Graphics.UI.Gtk.WebKit.GHCJS (runWebGUI)
+import Control.Concurrent (threadDelay, forkIO)
 
 -- Comments show how what these FFI calls should work when the
 -- code compiled is compiled with GHCJS
 main = do
-  unlisten <- runWebGUI $ \ webView -> do
+  runWebGUI $ \ webView -> do
     doc <- webViewGetDomDocument webView -- webView.document
     Just body <- documentGetBody doc     -- doc.body
 
@@ -48,9 +49,12 @@ main = do
     Just div <- fmap castToHTMLDivElement <$> documentCreateElement doc "div"
     elementSetAttribute div "style" "position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px"
     nodeAppendChild body (Just div)
-    engine doc div =<< mkFreecell
-  -- unlisten
-  return ()
+    unlisten <- engine doc div =<< mkFreecell
+
+    -- Prevent finalizers running too soon
+    forkIO $ forever (threadDelay 1000000000) >> unlisten
+
+    return ()
 
 
 

@@ -40,7 +40,7 @@ main = do
   putStrLn "------------------------------------"
   putStrLn "With GHCJS you can use stdout as you normally would."
   putStrLn "You can get input from stdin."
-  putStrLn "(we also support threads and MVar so you can wait a few 20 seconds if you don't have a keyboard)"
+  putStrLn "(we also support threads and MVar so you can wait 20 seconds if you don't have a keyboard)"
   putStr   "What is your name ? "
   hFlush stdout
 
@@ -131,7 +131,7 @@ main = do
       shiftIsPressed <- mouseShiftKey
       when shiftIsPressed . liftIO $ lazyLoad_freecell doc body
 
-  return ()
+    return()
 
 -- Integer uses goog.math.Integer compiled to Javascript
 isPrime :: Integer -> Bool
@@ -160,4 +160,7 @@ lazyLoad_freecell doc body = do
       "<div style=\"position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px\" "++
       "id=\"freecell\" draggable=\"false\"></div>"
     Just div <- fmap castToHTMLElement <$> documentGetElementById doc "freecell"
-    (engine doc div =<< mkFreecell) >> return ()
+    unlisten <- engine doc div =<< mkFreecell
+    -- Prevent finalizers running too soon
+    forkIO $ forever (threadDelay 1000000000) >> unlisten
+    return ()
