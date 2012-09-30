@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<script type="text/javascript" src="../../bin/multiple-pages.jsexe/rts.js"></script>
+<script type="text/javascript" src="../../bin/multiple-pages.jsexe/main.js"></script>
+<title>Multiple Pages</title>
+</head>
+<body>
+<h1>Multiple Pages</h1>
+
+<p>This example shows how you could use GHCJS with an existing web site.
+To keep it simple this example uses static HTML pages.</p>
+
+<ul>
+  <li><a href="primes.html">Prime numbers</a></li>
+  <li><a href="hamlet.html">Hamlet</a></li>
+</ul>
+
+<h3>Think of your GHCJS application as a custom browser for your web site.</h3>
+
+<p>In an ideal world your users would run a web browser with all the features
+you wanted and there would be no need for JavaScript.  Instead we use JavaScript
+to add the features that are missing.</p>
+
+<p>With GHCJS you can do this by writing a simple browser app like this one
+using WebKitGtk.  Then GHCJS will compile it to JavaScript and you can
+include it in all your HTML.</p>
+
+<p>One slight complication is that you don't want to wind up running your
+code twice when you open the HTML in the webkit browser.  The ghcjs-dom
+package has a runWebGUI function.  As well as creating a WebKitGtk browser
+window in native mode, it uses the UserAgent to identify when the
+JavaScript version is running inside the Native version.</p>
+
+<p>Every time you load a page the Main.main function runs and looks
+for content on the page to augment.  It can use lazy loading to limit
+the amount of JavaScript loaded for pages with little dynamic content.<p>
+
+<h3>To build & run in native code</h3>
+
+<p>With the regular GHC or integrated GHCJS installed.</p>
+
+<pre>
+cd multiple-pages
+cabal install
+multiple-pages http://localhost/.cabal/share/mulitple-pages-0.0.1/index.html
+</pre>
+
+<h3>To build & run in any browser</h3>
+
+<p>With integrated GHCJS installed.</p>
+
+<pre>
+cd multiple-pages
+cabal install
+ghcjs-min ~/.cabal/bin/multiple-pages.jsexe data/main.js
+open http://localhost/.cabal/share/mulitple-pages-0.0.1/index.html
+</pre>
+
+</body>
+</html>
