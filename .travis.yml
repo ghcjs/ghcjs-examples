@@ -5,5 +5,5 @@ install:
   - cabal-meta install --force-reinstalls
 notifications:
   irc:
-    channels: "irc.freenode.net#leksah"
+    channels: "irc.freenode.net#ghcjs"
   email: true
