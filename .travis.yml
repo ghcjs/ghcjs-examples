@@ -1,0 +1,9 @@
+language: haskell
+before_install: sh travis/gtk.sh
+install:
+  - cabal install ./cabal-meta cabal-src
+  - cabal-meta install --force-reinstalls
+notifications:
+  irc:
+    channels: "irc.freenode.net#leksah"
+  email: true
