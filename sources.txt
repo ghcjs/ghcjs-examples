@@ -1,5 +1,6 @@
 darcs:http://patch-tag.com/r/hamish/gtk2hs
 darcs:http://patch-tag.com/r/hamish/webkit
+https://github.com/ghcjs/ghcjs-dom.git
 ./ghcjs-hello
 ./multiple-pages
 ./webkit-sodium
