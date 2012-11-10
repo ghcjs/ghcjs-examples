@@ -3,6 +3,13 @@ before_install: sh travis/gtk.sh
 install:
   - cabal install ./cabal-meta cabal-src
   - cabal-meta install -fwebkit1-8 --force-reinstalls
+script:
+  - cd ghcjs-hello
+  - cabal test
+  - cd ../webkit-sodium
+  - cabal test
+  - cd ../multiple-pages
+  - cabal test
 notifications:
   irc:
     channels: "irc.freenode.net#ghcjs"
