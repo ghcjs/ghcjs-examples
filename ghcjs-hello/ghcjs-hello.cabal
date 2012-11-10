@@ -9,7 +9,7 @@ data-dir: ""
 
 executable ghcjs-hello
     build-depends: base -any, blaze-html -any, filepath -any,
-                   hamlet -any, text -any, blaze-markup -any, ghcjs -any,
+                   hamlet -any, text -any, blaze-markup -any,
                    webkit >=0.12.5, ghcjs-dom -any, mtl -any, sodium -any,
                    webkit-sodium -any
     main-is: Main.hs

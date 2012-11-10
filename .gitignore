@@ -6,3 +6,4 @@ cabal-dev
 *.chs.h
 /.shelly/
 /vendor/
+/gtk2hs/
