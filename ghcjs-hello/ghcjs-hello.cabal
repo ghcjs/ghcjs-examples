@@ -11,7 +11,7 @@ executable ghcjs-hello
     build-depends: base -any, blaze-html -any, filepath -any,
                    hamlet -any, text -any, blaze-markup -any,
                    webkit >=0.12.5, ghcjs-dom -any, mtl -any, sodium -any,
-                   webkit-sodium -any
+                   webkit-sodium -any, webkit-javascriptcore -any, jsc -any
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
