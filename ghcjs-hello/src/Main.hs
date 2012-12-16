@@ -32,17 +32,18 @@ import Graphics.UI.Gtk.WebKit.DOM.EventM
 import Graphics.UI.Gtk.WebKit.DOM.Node (nodeAppendChild)
 import Graphics.UI.Gtk.WebKit.DOM.CSSStyleDeclaration
        (cssStyleDeclarationSetProperty)
-import Graphics.UI.Gtk.WebKit.JavaScriptCore.JSC
-       (deRefVal, valToObject, valToNumber, (!), (.!), (#), (<#), global, eval, fun)
+import Language.Javascript.JSC
+       (strToText, valToStr, JSNull(..), deRefVal, valToObject,
+        valToNumber, (!), (#), (<#), global, eval, fun, val, array, new,
+        valToText, MakeValueRef(..), JSValue(..))
 import Control.Monad.Reader (ReaderT(..))
 import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
        (webFrameGetGlobalContext)
-import Graphics.UI.Gtk.WebKit.JavaScriptCore.JSC.Value
-       (JSValue(..))
 import qualified Data.Text as T (pack)
 import FRP.Sodium
 import Engine
 import Freecell -- What could this be for ? :-)
+import Language.Javascript.JMacro (jmacro, renderJs)
 
 main = do
   putStrLn "GHCJS compiles Haskell to JavaScript"
@@ -144,13 +145,13 @@ main = do
         g <- global
 
         -- console.log("Hello World")
-        g ! "console" .! "log" # ["Hello World"]
+        "console" ! "log" # T.pack "Hello World"
 
         -- console.log(Math.sin(1))
-        g ! "Math" .! "sin" # [1::Double] >>= valToNumber >>= (liftIO . print)
+        "Math" ! "sin" # (1::Double) >>= valToNumber >>= (liftIO . print)
 
         -- var canvas = document.getElementById("canvas")
-        canvas <- g ! "document" .! "getElementById" # ["canvas"] >>= valToObject
+        canvas <- "document" ! "getElementById" # ["canvas"] >>= valToObject
 
         -- var ctx = canvas.getContext("2d")
         ctx <- canvas ! "getContext" # ["2d"] >>= valToObject
@@ -161,16 +162,26 @@ main = do
         -- ctx.fillRect( 0, 0, 150, 75 )
         ctx ! "fillRect" # [0::Double, 0, 10, 10]
 
+        -- (new Date()).toString()
+        new "Date" () >>= valToText >>= (liftIO . print)
+
         -- console.log(eval('console.log("Hello"); 1+2'))
         eval "console.log(\"Hello\"); 1+2" >>= deRefVal >>= (liftIO . print)
 
+        -- console.log(["Test", navigator.appVersion].length)
+        "console" ! "log" # array ("Test", "navigator" ! "appVersion") ! "length"
+
         -- callbackToHaskell = function () { console.log(arguments); }
-        g ! "callbackToHaskell" <# fun (\f this args -> mapM deRefVal args >>= (liftIO . print))
+        "callbackToHaskell" <# fun (\f this args -> mapM deRefVal args >>= (liftIO . print))
+        callBack <- g ! "callbackToHaskell"
 
         -- callbackToHaskell(null, undefined, true, 3.14, "Hello")
-        g ! "callbackToHaskell" # [ValNull, ValUndefined, ValBool True, ValNumber 3.14, ValString $ T.pack "Hello"]
-
-        -- eval("callbackToHaskell(null, undefined, true, 3.14, \"Hello\")")
+        callBack # [ValNull, ValUndefined, ValBool True, ValNumber 3.14, ValString $ T.pack "Hello"]
+        -- or
+        callBack # [val JSNull, val (), val True, val (3.14 :: Double), val "Hello"]
+        -- or
+        callBack # (JSNull, (), True, (3.14 :: Double), "Hello")
+        -- or
         eval "callbackToHaskell(null, undefined, true, 3.14, \"Hello\")"
 
     -- What is this?
