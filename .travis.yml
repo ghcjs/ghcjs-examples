@@ -9,7 +9,7 @@ before_install:
   - cd ..
 install:
   - cabal install cabal-meta cabal-src
-  - cabal-meta install -fwebkit1-8 -fgtk3 --force-reinstalls
+  - cabal-meta install -fwebkit1-8 -fgtk3 --force-reinstalls || cabal-meta install -fwebkit1-8 -fgtk3 --force-reinstalls
 script:
   - cd ghcjs-hello
   - cabal test
