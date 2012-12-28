@@ -4,14 +4,14 @@ cabal-version: >=1.8
 build-type: Simple
 license: BSD3
 license-file: ""
-description:
 data-dir: ""
 
 executable ghcjs-hello
-    build-depends: base -any, blaze-html -any, filepath -any,
-                   hamlet -any, text -any, blaze-markup -any,
+    build-depends: template-haskell -any, base -any, blaze-html -any,
+                   filepath -any, hamlet -any, text -any, blaze-markup -any,
                    webkit >=0.12.5, ghcjs-dom -any, mtl -any, sodium -any,
-                   webkit-sodium -any, webkit-javascriptcore -any, jsc -any
+                   webkit-sodium -any, webkit-javascriptcore -any, jsc -any,
+                   jmacro -any, gtk -any
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src

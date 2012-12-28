@@ -1,23 +1,26 @@
-{-# LANGUAGE TemplateHaskell, QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell, QuasiQuotes, ScopedTypeVariables #-}
 module Main (
     main, lazyLoad_freecell
 ) where
 
+import Prelude hiding ((!!))
 import Control.Monad.Trans ( liftIO )
-import System.IO (stdout, hFlush)
+import System.IO (stderr, hPutStrLn, stdout, hFlush)
+import Graphics.UI.Gtk (postGUISync)
 import Graphics.UI.Gtk.WebKit.GHCJS (runWebGUI)
 import Graphics.UI.Gtk.WebKit.WebView
        (webViewGetMainFrame, webViewGetDomDocument)
 import Graphics.UI.Gtk.WebKit.DOM.Document
        (documentCreateElement, documentGetElementById, documentGetBody)
 import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
-       (htmlElementSetInnerHTML)
+       (htmlElementSetInnerText, htmlElementSetInnerHTML)
 import Data.Text.Lazy (Text, unpack)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Hamlet (shamlet)
 import Text.Blaze.Html (Html)
 import Graphics.UI.Gtk.WebKit.Types
-       (castToHTMLElement, castToHTMLDivElement, castToHTMLInputElement)
+       (Node(..), castToHTMLElement, castToHTMLDivElement,
+        castToHTMLInputElement)
 import Control.Applicative ((<$>))
 import Graphics.UI.Gtk.WebKit.DOM.Element
        (elementGetStyle, elementSetAttribute, elementOnclick,
@@ -29,13 +32,14 @@ import Control.Concurrent
 import Control.Monad (when, forever)
 import Graphics.UI.Gtk.WebKit.DOM.EventM
        (mouseShiftKey, mouseCtrlKey)
-import Graphics.UI.Gtk.WebKit.DOM.Node (nodeAppendChild)
+import Graphics.UI.Gtk.WebKit.DOM.Node
+       (nodeInsertBefore, nodeAppendChild)
 import Graphics.UI.Gtk.WebKit.DOM.CSSStyleDeclaration
        (cssStyleDeclarationSetProperty)
 import Language.Javascript.JSC
        (strToText, valToStr, JSNull(..), deRefVal, valToObject,
-        valToNumber, (!), (#), (<#), global, eval, fun, val, array, new,
-        valToText, MakeValueRef(..), JSValue(..))
+        valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new,
+        valToText, MakeValueRef(..), JSValue(..), evalJM, call, JSC(..), JSValueRef)
 import Control.Monad.Reader (ReaderT(..))
 import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
        (webFrameGetGlobalContext)
@@ -43,37 +47,14 @@ import qualified Data.Text as T (pack)
 import FRP.Sodium
 import Engine
 import Freecell -- What could this be for ? :-)
-import Language.Javascript.JMacro (jmacro, renderJs)
+import Language.Javascript.JMacro
+       (jmacroE, jLam, jmacro, renderJs, ToJExpr(..), JStat(..))
+import Language.Haskell.TH (Exp(..), Lit(..))
 
 main = do
-  putStrLn "GHCJS compiles Haskell to JavaScript"
-  putStrLn "------------------------------------"
-  putStrLn "With GHCJS you can use stdout as you normally would."
-  putStrLn "You can get input from stdin."
-  putStrLn "(we also support threads and MVar so you can wait 20 seconds if you don't have a keyboard)"
-  putStr   "What is your name ? "
-  hFlush stdout
-
-  -- We can use MVars and threads
-  nameMVar <- newEmptyMVar
-
-  -- Wait for input on one thread
-  forkIO $ do
-    line <- getLine
-    putMVar nameMVar line
-
-  -- Wait for 20s on another
-  forkIO $ do
-    threadDelay 20000000
-    putMVar nameMVar ""
-
-  -- Get the first result
-  name <- takeMVar nameMVar
-
   -- Running a GUI creates a WebKitGtk window in native code,
   -- but just returns the browser window when compiled to JavaScript
   runWebGUI $ \ webView -> do
-
     -- WebKitGtk provides the normal W3C DOM functions
     doc <- webViewGetDomDocument webView
     Just body <- documentGetBody doc
@@ -82,10 +63,7 @@ main = do
     Just div <- fmap castToHTMLDivElement <$> documentCreateElement doc "div"
     htmlElementSetInnerHTML div . unpack $ renderHtml [shamlet|$newline always
         <h1 #heading>
-            Hello #{name} and Welcome GHCJS
-        <p>
-            As you can see GHCJS apps can also use the DOM functions
-          \ in the WebKitGtk Gtk2Hs package
+            Hello and Welcome GHCJS
         <p>
             Know any good prime numbers?
             <input #num size="8">
@@ -93,32 +71,49 @@ main = do
         <p>
             Here is a quick test of Canvas using jsc
             <canvas #"canvas" width="10" height="10">
-        <p>
-            Thats it for our Hello World.  Here are some more fun GHCJS things to try
         <ul>
           <li>
             Check out the <a href="https://github.com/ghcjs/ghcjs-examples/blob/master/ghcjs-hello/src/Main.hs">Haskell source code</a>
-            \ for this example.  (read it carefully to find the hidden FRP)
+            \ for this example.  (read it carefully to find the hidden FRP example)
           <li>
             Try out the <a href="hterm.html">unminified version</a>
     |]
-    nodeAppendChild body (Just div)
+    -- Now we need to add this div to the document body
+    -- If we are in the browser then let's shrink the terminal window to make room
+    mbTerminal <- fmap castToHTMLDivElement <$> documentGetElementById doc "terminal"
+    case mbTerminal of
+      Just terminal -> do
+        Just style <- elementGetStyle terminal
+        cssStyleDeclarationSetProperty style "height" "200px" ""
+        cssStyleDeclarationSetProperty style "position" "absolute" ""
+        cssStyleDeclarationSetProperty style "bottom" "0" ""
+        nodeInsertBefore body (Just div) (Just terminal)
+      _             -> do
+        nodeAppendChild body (Just div)
 
     -- We can get the elements by ID
     Just numInput <- fmap castToHTMLInputElement <$> documentGetElementById doc "num"
     Just prime    <- fmap castToHTMLDivElement   <$> documentGetElementById doc "prime"
     Just heading  <- fmap castToHTMLElement      <$> documentGetElementById doc "heading"
-    mbTerminal    <- fmap castToHTMLDivElement   <$> documentGetElementById doc "terminal"
 
-    -- Set the input focus
-    elementFocus numInput
+    -- You can also use your favorite JavaScript libraries
+    gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
+    (`runReaderT` gctxt) $ do
+        -- var canvas = document.getElementById("canvas")
+        canvas <- "document" ! "getElementById" # ["canvas"]
 
-    -- If we are in the browser let's shrink the terminal window to make room
-    case mbTerminal of
-      Just terminal -> do
-        Just style <- elementGetStyle terminal
-        cssStyleDeclarationSetProperty style "height" "200" ""
-      _             -> return ()
+        -- var ctx = canvas.getContext("2d")
+        ctx <- canvas ! "getContext" # ["2d"]
+
+        liftIO . forkIO . forever . (`runReaderT` gctxt) $ do
+            -- ctx.fillStyle = "#00FF00"
+            -- ctx.fillRect( 0, 0, 150, 75 )
+            ctx ! "fillStyle" <# "#00FF00"
+            ctx ! "fillRect" # [0::Double, 0, 10, 10]
+            liftIO $ threadDelay 500000
+            ctx ! "fillStyle" <# "#FF0000"
+            ctx ! "fillRect" # [0::Double, 0, 10, 10]
+            liftIO $ threadDelay 500000
 
     -- We don't want to work on more than on prime number test at a time.
     -- So we will have a single worker thread and a queue with just one value.
@@ -138,58 +133,93 @@ main = do
     elementOnkeyup    numInput (liftIO setNext)
     elementOnkeypress numInput (liftIO setNext)
 
-    -- You can also use your favorite JavaScript libraries
-    webframe <- webViewGetMainFrame webView
-    gctxt <- webFrameGetGlobalContext webframe
-    flip runReaderT gctxt $ do
+    putStrLn "This is stdout."
+    hPutStrLn stderr "This is stderr."
+    putStrLn "You can get input from stdin."
+    putStrLn "(we also support threads and MVar, so you can wait 20 seconds if you don't have a keyboard)"
+    putStr   "What is your name ? "
+    hFlush stdout
+
+    -- We can use MVars and threads
+    nameMVar <- newEmptyMVar
+
+    -- Wait for input on one thread
+    forkIO $ do
+      line <- getLine
+      putMVar nameMVar line
+
+    -- Wait for 20s on another
+    forkIO $ do
+      threadDelay 20000000
+      putMVar nameMVar "World"
+
+    -- Get the first result
+    forkIO $ do
+      name <- takeMVar nameMVar
+      htmlElementSetInnerText heading $ "Hello " ++ name ++ " and Welcome GHCJS"
+
+      -- Set the input focus to the prime number test
+      elementFocus numInput
+
+      -- Now stdout is free let's try some more JavaScript stuff...
+      (`runReaderT` gctxt) $ do
         g <- global
 
-        -- console.log("Hello World")
-        "console" ! "log" # T.pack "Hello World"
+        -- Some helper functions to print JS values
+        let log       v = deRefVal      v >>= (liftIO . print)
+            logNumber v = valToNumber   v >>= (liftIO . print)
+            logText   v = valToText     v >>= (liftIO . print)
+            logList   v = mapM deRefVal v >>= (liftIO . print)
+
+        -- Add Java Script logText function that calls the haskell logText
+        "logText" <# fun (\_f _this [s] -> logText s)
+
+        -- logText("Hello World")
+        "logText" # T.pack "Hello World"
 
         -- console.log(Math.sin(1))
-        "Math" ! "sin" # (1::Double) >>= valToNumber >>= (liftIO . print)
-
-        -- var canvas = document.getElementById("canvas")
-        canvas <- "document" ! "getElementById" # ["canvas"] >>= valToObject
-
-        -- var ctx = canvas.getContext("2d")
-        ctx <- canvas ! "getContext" # ["2d"] >>= valToObject
-
-        -- ctx.fillStyle = "#00FF00"
-        ctx ! "fillStyle" <# "#00FF00"
-
-        -- ctx.fillRect( 0, 0, 150, 75 )
-        ctx ! "fillRect" # [0::Double, 0, 10, 10]
+        "Math" ! "sin" # (1::Double) >>= logNumber
 
         -- (new Date()).toString()
-        new "Date" () >>= valToText >>= (liftIO . print)
+        -- (new Date(2013,1,1)).toString()
+        new "Date" () >>= logText
+        new "Date" [2013,1,1::Double] >>= logText
 
-        -- console.log(eval('console.log("Hello"); 1+2'))
-        eval "console.log(\"Hello\"); 1+2" >>= deRefVal >>= (liftIO . print)
+        -- eval("logText('Hello'); 1+2")
+        eval "logText('Hello'); 1+2" >>= log
 
-        -- console.log(["Test", navigator.appVersion].length)
-        "console" ! "log" # array ("Test", "navigator" ! "appVersion") ! "length"
+        -- logText(["Test", navigator.appVersion].length)
+        "logText" # array ("Test", "navigator" ! "appVersion") ! "length"
 
         -- callbackToHaskell = function () { console.log(arguments); }
-        "callbackToHaskell" <# fun (\f this args -> mapM deRefVal args >>= (liftIO . print))
-        callBack <- g ! "callbackToHaskell"
+        callBack <- "callbackToHaskell" <# fun (\f this -> logList)
 
         -- callbackToHaskell(null, undefined, true, 3.14, "Hello")
-        callBack # [ValNull, ValUndefined, ValBool True, ValNumber 3.14, ValString $ T.pack "Hello"]
+        callBack # [ValNull, ValUndefined, ValBool True, ValNumber 3.14, ValString $ T.pack "List of JSValues"]
         -- or
-        callBack # [val JSNull, val (), val True, val (3.14 :: Double), val "Hello"]
+        callBack # [val JSNull, val (), val True, val (3.14 :: Double), val "List of JSC JSValueRefs"]
         -- or
-        callBack # (JSNull, (), True, (3.14 :: Double), "Hello")
+        callBack # (JSNull, (), True, (3.14 :: Double), "5-tuple")
         -- or
-        eval "callbackToHaskell(null, undefined, true, 3.14, \"Hello\")"
+        eval "callbackToHaskell(null, undefined, true, 3.14, \"Eval\")"
+        -- or
+        $([evalJM|callbackToHaskell(null, undefined, true, 3.14, "Evaled JMacro")|])
+        -- or
+        jmfunc <- $([evalJM| \ a b c d e -> callbackToHaskell(a, b, c, d, e) |])
+        let callJM :: (JSNull, (), Bool, Double, String) -> JSC JSValueRef = call jmfunc jmfunc
+        callJM (JSNull, (), True, 3.14, "Via JMacro Evaled Function")
+
+        -- var a = []; for(var i = 0; i != 10; ++i) a[i] = i; console.log(a[5]);
+        array ([0..10]::[Double]) !! 5 >>= log
+
+        return ()
 
     -- What is this?
     elementOnclick heading $ do
       shiftIsPressed <- mouseShiftKey
-      when shiftIsPressed . liftIO $ lazyLoad_freecell doc body
+      when shiftIsPressed . liftIO $ lazyLoad_freecell webView doc body
 
-    return()
+    return ()
 
 -- Integer uses goog.math.Integer compiled to Javascript
 isPrime :: Integer -> Bool
@@ -213,12 +243,11 @@ validatePrime s = renderHtml $
 -- you can tell the GHCJS linker to put its dependancies in a sparate file using
 -- a lazyLoad_ prefix
 {-# NOINLINE lazyLoad_freecell #-}
-lazyLoad_freecell doc body = do
+lazyLoad_freecell webView doc body = do
     htmlElementSetInnerHTML body $
       "<div style=\"position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px\" "++
       "id=\"freecell\" draggable=\"false\"></div>"
-    Just div <- fmap castToHTMLElement <$> documentGetElementById doc "freecell"
-    unlisten <- engine doc div =<< mkFreecell
+    unlisten <- engine webView "freecell" =<< mkFreecell
     -- Prevent finalizers running too soon
     forkIO $ forever (threadDelay 1000000000) >> unlisten
     return ()
