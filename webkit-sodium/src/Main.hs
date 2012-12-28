@@ -48,8 +48,9 @@ main = do
 
     Just div <- fmap castToHTMLDivElement <$> documentCreateElement doc "div"
     elementSetAttribute div "style" "position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px"
+    elementSetAttribute div "id" "freecell"
     nodeAppendChild body (Just div)
-    unlisten <- engine doc div =<< mkFreecell
+    unlisten <- engine webView "freecell" =<< mkFreecell
 
     -- Prevent finalizers running too soon
     forkIO $ forever (threadDelay 1000000000) >> unlisten

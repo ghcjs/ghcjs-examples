@@ -1,14 +1,16 @@
 module Engine where
 
+import Prelude hiding ((!!))
 import Graphics.UI.Gtk.WebKit.WebView
-       (webViewNew, webViewGetDomDocument)
+       (webViewGetMainFrame, webViewNew, webViewGetDomDocument)
 import Graphics.UI.Gtk.WebKit.DOM.Document
        (documentCreateElement, documentGetElementById, documentGetBody,
         documentGetDocumentElement)
 import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
        (htmlElementInsertAdjacentElement, htmlElementSetInnerHTML,
         htmlElementInsertAdjacentHTML)
-import Graphics.UI.Gtk.WebKit.Types (castToHTMLElement, castToElement, Document,
+import Graphics.UI.Gtk.WebKit.Types
+       (WebView(..), castToHTMLElement, castToElement, Document,
         HTMLElement, ElementClass, MouseEventClass, gTypeElement)
 import Control.Applicative ((<$>))
 import Control.Arrow
@@ -26,6 +28,10 @@ import Data.Maybe
 
 import FRP.Sodium
 import Game
+import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
+       (webFrameGetGlobalContext)
+import Control.Monad.Reader (ReaderT(..))
+import Language.Javascript.JSC ((!), (!!), (#), (<#), fun, deRefVal, JSValue(..))
 
 -- Convert (game) world to/from screen co-ordinates.
 -- World co-ordinates are x = -1400..1400, y = -1000 to 1000
@@ -57,9 +63,8 @@ getXYRelativeTo :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
                    Document -> elt -> EventM e t (Int, Int)
 getXYRelativeTo doc container = do
     (px, py) <- mousePageXY doc container
-    liftIO $ do
-        (cx, cy) <- elementPageXY doc container
-        return (px - cx, py - cy)
+    (cx, cy) <- liftIO $ elementPageXY doc container
+    return (px - cx, py - cy)
 
 mousePageXY :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
                Document -> elt -> EventM e t (Int, Int)
@@ -107,10 +112,12 @@ data ButtonState = Up | Down deriving Eq
 
 -- | Instantiate the game, handling mouse events and drawing the output.
 -- Returns an \'unlisten\' action to de-register listeners.
-engine :: ElementClass elt =>
-          Document -> elt -> (Event MouseEvent -> Reactive (BehaviorTree [Sprite])) -> IO (IO ())
-engine doc container game = do
+engine :: WebView -> String -> (Event MouseEvent -> Reactive (BehaviorTree [Sprite])) -> IO (IO ())
+engine webView containerId game = do
     putStrLn "Haskell Freecell"
+
+    doc <- webViewGetDomDocument webView
+    Just container <- fmap castToHTMLElement <$> documentGetElementById doc containerId
     -- Construct a mouse event that lives in FRP land, and a push action
     -- that allows us to push values into it from IO land.
     (eMouse, pushMouse) <- sync newEvent
@@ -127,6 +134,44 @@ engine doc container game = do
     elementOnmouseup container $ do
         xy <- getXYRelativeTo doc container
         liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ xy
+
+    (cx, cy) <- elementPageXY doc container
+    gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
+    (`runReaderT` gctxt) $ do
+        c <- "document" ! "getElementById" # [containerId]
+        c ! "ontouchstart" <# fun $ \f this [e] -> do
+          e ! "preventDefault" # ()
+          n <- e ! "touches" ! "length" >>= deRefVal
+          when (n == ValNumber 1) $ do
+              t <- e ! "touches" !! 0
+              vx <- t ! "pageX" >>= deRefVal
+              vy <- t ! "pageY" >>= deRefVal
+              case (vx, vy) of
+                (ValNumber x, ValNumber y) ->
+                  liftIO . sanitize Down . sync . pushMouse . MouseDown . toWorld $ ((floor x)-cx, (floor y)-cy)
+                _ -> return ()
+        c ! "ontouchmove" <# fun $ \f this [e] -> do
+          e ! "preventDefault" # ()
+          n <- e ! "touches" ! "length" >>= deRefVal
+          when (n == ValNumber 1) $ do
+              t <- e ! "touches" !! 0
+              vx <- t ! "pageX" >>= deRefVal
+              vy <- t ! "pageY" >>= deRefVal
+              case (vx, vy) of
+                (ValNumber x, ValNumber y) ->
+                  liftIO . sync . pushMouse . MouseMove . toWorld $ ((floor x)-cx, (floor y)-cy)
+                _ -> return ()
+        c ! "ontouchend" <# fun $ \f this [e] -> do
+          e ! "preventDefault" # ()
+          n <- e ! "changedTouches" ! "length" >>= deRefVal
+          when (n == ValNumber 1) $ do
+              t <- e ! "changedTouches" !! 0
+              vx <- t ! "pageX" >>= deRefVal
+              vy <- t ! "pageY" >>= deRefVal
+              case (vx, vy) of
+                (ValNumber x, ValNumber y) ->
+                  liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ ((floor x)-cx, (floor y)-cy)
+                _ -> return ()
 
     -- Instantiate the FRP logic: We give it our mouse event, and it gives us back the
     -- sprite behaviours that tell us what to draw on the screen.
