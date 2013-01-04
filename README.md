@@ -50,7 +50,7 @@ strongly recommend using Linux (or a Linux VM).
 
 Compiled to JavaScript with Integrated GHCJS
 --------------------------------------------
-TODO Add instructions....
+Follow the instructions in Integrated section of [GHCJS](https://github.com/ghcjs/ghcjs)
 
 Compiled to JavaScript with Stand Alone GHCJS
 ---------------------------------------------
