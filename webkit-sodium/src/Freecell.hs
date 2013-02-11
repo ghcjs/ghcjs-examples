@@ -1,6 +1,4 @@
 {-# LANGUAGE DoRec #-}
-module Freecell (mkFreecell) where
-
 -- | A minimal implementation of Freecell, a soltaire card game, to demonstrate
 -- the Sodium reactive programming system.
 --
@@ -11,6 +9,8 @@ module Freecell (mkFreecell) where
 --     stb-image
 --     OpenGL
 --     GLUT
+module Freecell (mkFreecell) where
+
 import FRP.Sodium
 import Control.Applicative
 import Control.Monad
