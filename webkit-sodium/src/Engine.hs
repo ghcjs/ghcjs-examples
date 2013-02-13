@@ -31,7 +31,8 @@ import Game
 import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
        (webFrameGetGlobalContext)
 import Control.Monad.Reader (ReaderT(..))
-import Language.Javascript.JSC ((!), (!!), (#), (<#), fun, deRefVal, JSValue(..))
+import Language.Javascript.JSC (js, jsg, (!!), (#), (<#), fun, deRefVal, JSValue(..))
+import Control.Lens ((^.))
 
 -- Convert (game) world to/from screen co-ordinates.
 -- World co-ordinates are x = -1400..1400, y = -1000 to 1000
@@ -138,36 +139,48 @@ engine webView containerId game = do
     (cx, cy) <- elementPageXY doc container
     gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
     (`runReaderT` gctxt) $ do
-        c <- "document" ! "getElementById" # [containerId]
-        c ! "ontouchstart" <# fun $ \f this [e] -> do
-          e ! "preventDefault" # ()
-          n <- e ! "touches" ! "length" >>= deRefVal
+        document <- jsg "document"
+        let getElementById = js "getElementById"
+            ontouchstart   = js "ontouchstart"
+            ontouchmove    = js "ontouchmove"
+            ontouchend     = js "ontouchend"
+            preventDefault = js "preventDefault"
+            touches        = js "touches"
+            changedTouches = js "changedTouches"
+            jsLength       = js "lenght"
+            pageX          = js "pageX"
+            pageY          = js "pageY"
+
+        c <- document ^. getElementById # [containerId]
+        c ^. ontouchstart <# fun $ \f this [e] -> do
+          e ^. preventDefault # ()
+          n <- e ^. touches . jsLength >>= deRefVal
           when (n == ValNumber 1) $ do
-              t <- e ! "touches" !! 0
-              vx <- t ! "pageX" >>= deRefVal
-              vy <- t ! "pageY" >>= deRefVal
+              t <- (e ^. touches) !! 0
+              vx <- t ^. pageX >>= deRefVal
+              vy <- t ^. pageY >>= deRefVal
               case (vx, vy) of
                 (ValNumber x, ValNumber y) ->
                   liftIO . sanitize Down . sync . pushMouse . MouseDown . toWorld $ ((floor x)-cx, (floor y)-cy)
                 _ -> return ()
-        c ! "ontouchmove" <# fun $ \f this [e] -> do
-          e ! "preventDefault" # ()
-          n <- e ! "touches" ! "length" >>= deRefVal
+        c ^. ontouchmove <# fun $ \f this [e] -> do
+          e ^. preventDefault # ()
+          n <- e ^. touches . jsLength >>= deRefVal
           when (n == ValNumber 1) $ do
-              t <- e ! "touches" !! 0
-              vx <- t ! "pageX" >>= deRefVal
-              vy <- t ! "pageY" >>= deRefVal
+              t <- (e ^. touches) !! 0
+              vx <- t ^. pageX >>= deRefVal
+              vy <- t ^. pageY >>= deRefVal
               case (vx, vy) of
                 (ValNumber x, ValNumber y) ->
                   liftIO . sync . pushMouse . MouseMove . toWorld $ ((floor x)-cx, (floor y)-cy)
                 _ -> return ()
-        c ! "ontouchend" <# fun $ \f this [e] -> do
-          e ! "preventDefault" # ()
-          n <- e ! "changedTouches" ! "length" >>= deRefVal
+        c ^. ontouchend <# fun $ \f this [e] -> do
+          e ^. preventDefault # ()
+          n <- e ^. changedTouches . jsLength >>= deRefVal
           when (n == ValNumber 1) $ do
-              t <- e ! "changedTouches" !! 0
-              vx <- t ! "pageX" >>= deRefVal
-              vy <- t ! "pageY" >>= deRefVal
+              t <- (e ^. changedTouches) !! 0
+              vx <- t ^. pageX >>= deRefVal
+              vy <- t ^. pageY >>= deRefVal
               case (vx, vy) of
                 (ValNumber x, ValNumber y) ->
                   liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ ((floor x)-cx, (floor y)-cy)

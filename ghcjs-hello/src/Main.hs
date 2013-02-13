@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, QuasiQuotes, ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction #-}
 module Main (
     main, lazyLoad_freecell
 ) where
@@ -6,7 +6,7 @@ module Main (
 import Prelude hiding ((!!))
 import Control.Monad.Trans ( liftIO )
 import System.IO (stderr, hPutStrLn, stdout, hFlush)
-import Graphics.UI.Gtk (postGUISync)
+import Graphics.UI.Gtk (postGUIAsync, postGUISync)
 import Graphics.UI.Gtk.WebKit.GHCJS (runWebGUI)
 import Graphics.UI.Gtk.WebKit.WebView
        (webViewGetMainFrame, webViewGetDomDocument)
@@ -37,24 +37,26 @@ import Graphics.UI.Gtk.WebKit.DOM.Node
 import Graphics.UI.Gtk.WebKit.DOM.CSSStyleDeclaration
        (cssStyleDeclarationSetProperty)
 import Language.Javascript.JSC
-       (strToText, valToStr, JSNull(..), deRefVal, valToObject,
+       (strToText, valToStr, JSNull(..), deRefVal, valToObject, js, jsg,
         valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new,
         valToText, MakeValueRef(..), JSValue(..), evalJM, call, JSC(..), JSValueRef)
 import Control.Monad.Reader (ReaderT(..))
 import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
        (webFrameGetGlobalContext)
-import qualified Data.Text as T (pack)
+import qualified Data.Text as T (unpack, pack)
 import FRP.Sodium
 import Engine
 import Freecell -- What could this be for ? :-)
 import Language.Javascript.JMacro
        (jmacroE, jLam, jmacro, renderJs, ToJExpr(..), JStat(..))
 import Language.Haskell.TH (Exp(..), Lit(..))
+import System.IO.Unsafe (unsafePerformIO)
+import Control.Lens ((^.))
 
 main = do
   -- Running a GUI creates a WebKitGtk window in native code,
   -- but just returns the browser window when compiled to JavaScript
-  runWebGUI $ \ webView -> do
+  runWebGUI $ \ webView -> postGUIAsync $ do
     -- WebKitGtk provides the normal W3C DOM functions
     doc <- webViewGetDomDocument webView
     Just body <- documentGetBody doc
@@ -98,21 +100,35 @@ main = do
 
     -- You can also use your favorite JavaScript libraries
     gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
-    (`runReaderT` gctxt) $ do
+
+    -- Run JavaScript using postGUISync to make sure it runs on the Gtk thread.
+    -- This should avoid threading issues when using WebKitGTK+.
+    let runjs f = postGUIAsync $ f `runReaderT` gctxt >> return ()
+
+    runjs $ do
+        -- Declare the javascript property getters we will be using
+        document <- jsg "document"
+        let getElementById = js "getElementById"
+            getContext     = js "getContext"
+            fillStyle      = js "fillStyle"
+            fillRect       = js "fillRect"
+
         -- var canvas = document.getElementById("canvas")
-        canvas <- "document" ! "getElementById" # ["canvas"]
+        canvas <- document ^. getElementById # ["canvas"]
 
         -- var ctx = canvas.getContext("2d")
-        ctx <- canvas ! "getContext" # ["2d"]
+        ctx <- canvas ^. getContext # ["2d"]
 
-        liftIO . forkIO . forever . (`runReaderT` gctxt) $ do
-            -- ctx.fillStyle = "#00FF00"
-            -- ctx.fillRect( 0, 0, 150, 75 )
-            ctx ! "fillStyle" <# "#00FF00"
-            ctx ! "fillRect" # [0::Double, 0, 10, 10]
+        liftIO . forkIO . forever $ do
+            runjs $ do
+                -- ctx.fillStyle = "#00FF00"
+                -- ctx.fillRect( 0, 0, 150, 75 )
+                ctx ^. fillStyle <# "#00FF00"
+                ctx ^. fillRect # [0::Double, 0, 10, 10]
             liftIO $ threadDelay 500000
-            ctx ! "fillStyle" <# "#FF0000"
-            ctx ! "fillRect" # [0::Double, 0, 10, 10]
+            runjs $ do
+                ctx ^. fillStyle <# "#FF0000"
+                ctx ^. fillRect # [0::Double, 0, 10, 10]
             liftIO $ threadDelay 500000
 
     -- We don't want to work on more than on prime number test at a time.
@@ -120,7 +136,8 @@ main = do
     next <- newEmptyMVar
     forkIO . forever $ do
       n <- takeMVar next
-      htmlElementSetInnerHTML prime . unpack $ validatePrime n
+      postGUISync $ do
+          htmlElementSetInnerHTML prime . unpack $ validatePrime n
 
     -- Something to set the next work item
     let setNext = do
@@ -156,63 +173,68 @@ main = do
     -- Get the first result
     forkIO $ do
       name <- takeMVar nameMVar
-      htmlElementSetInnerText heading $ "Hello " ++ name ++ " and Welcome GHCJS"
+      postGUISync $ do
+        htmlElementSetInnerText heading $ "Hello " ++ name ++ " and Welcome GHCJS"
 
-      -- Set the input focus to the prime number test
-      elementFocus numInput
+        -- Set the input focus to the prime number test
+        elementFocus numInput
 
-      -- Now stdout is free let's try some more JavaScript stuff...
-      (`runReaderT` gctxt) $ do
-        g <- global
+        -- Now stdout is free let's try some more JavaScript stuff...
+        runjs $ do
+            -- Some helper functions to print JS values
+            let log       v = deRefVal      v >>= (liftIO . print)
+                logNumber v = valToNumber   v >>= (liftIO . print)
+                logText   v = valToText     v >>= (liftIO . print)
+                logList   v = mapM deRefVal v >>= (liftIO . print)
 
-        -- Some helper functions to print JS values
-        let log       v = deRefVal      v >>= (liftIO . print)
-            logNumber v = valToNumber   v >>= (liftIO . print)
-            logText   v = valToText     v >>= (liftIO . print)
-            logList   v = mapM deRefVal v >>= (liftIO . print)
+            -- Add Java Script logText function that calls the haskell logText
+            jsLogText <- jsg "logText" <# fun (\_f _this [s] -> logText s)
 
-        -- Add Java Script logText function that calls the haskell logText
-        "logText" <# fun (\_f _this [s] -> logText s)
+            -- logText("Hello World")
+            jsLogText # ["Hello World"]
 
-        -- logText("Hello World")
-        "logText" # T.pack "Hello World"
+            -- console.log(Math.sin(1))
+            math <- jsg "Math"
+            let sin = js "sin"
+            math ^. sin # (1::Double) >>= logNumber
 
-        -- console.log(Math.sin(1))
-        "Math" ! "sin" # (1::Double) >>= logNumber
+            -- (new Date()).toString()
+            -- (new Date(2013,1,1)).toString()
+            date <- jsg "Date"
+            new date () >>= logText
+            new date [2013,1,1::Double] >>= logText
 
-        -- (new Date()).toString()
-        -- (new Date(2013,1,1)).toString()
-        new "Date" () >>= logText
-        new "Date" [2013,1,1::Double] >>= logText
+            -- eval("logText('Hello'); 1+2")
+            eval "logText('Hello'); 1+2" >>= log
 
-        -- eval("logText('Hello'); 1+2")
-        eval "logText('Hello'); 1+2" >>= log
+            -- logText(["Test", navigator.appVersion.length].length)
+            navigator  <- jsg "navigator"
+            let appVersion = js "appVersion"
+                jsLength   = js "length"
+            jsLogText # array ("Test", navigator ^. appVersion . jsLength) ^. jsLength
 
-        -- logText(["Test", navigator.appVersion].length)
-        "logText" # array ("Test", "navigator" ! "appVersion") ! "length"
+            -- callbackToHaskell = function () { console.log(arguments); }
+            callBack <- jsg "callbackToHaskell" <# fun (\f this -> logList)
 
-        -- callbackToHaskell = function () { console.log(arguments); }
-        callBack <- "callbackToHaskell" <# fun (\f this -> logList)
+            -- callbackToHaskell(null, undefined, true, 3.14, "Hello")
+            callBack # [ValNull, ValUndefined, ValBool True, ValNumber 3.14, ValString $ T.pack "List of JSValues"]
+            -- or
+            callBack # [val JSNull, val (), val True, val (3.14 :: Double), val "List of JSC JSValueRefs"]
+            -- or
+            callBack # (JSNull, (), True, (3.14 :: Double), "5-tuple")
+            -- or
+            eval "callbackToHaskell(null, undefined, true, 3.14, \"Eval\")"
+            -- or
+            $([evalJM|callbackToHaskell(null, undefined, true, 3.14, "Evaled JMacro")|])
+            -- or
+            jmfunc <- $([evalJM| \ a b c d e -> callbackToHaskell(a, b, c, d, e) |])
+            let callJM :: (JSNull, (), Bool, Double, String) -> JSC JSValueRef = call jmfunc jmfunc
+            callJM (JSNull, (), True, 3.14, "Via JMacro Evaled Function")
 
-        -- callbackToHaskell(null, undefined, true, 3.14, "Hello")
-        callBack # [ValNull, ValUndefined, ValBool True, ValNumber 3.14, ValString $ T.pack "List of JSValues"]
-        -- or
-        callBack # [val JSNull, val (), val True, val (3.14 :: Double), val "List of JSC JSValueRefs"]
-        -- or
-        callBack # (JSNull, (), True, (3.14 :: Double), "5-tuple")
-        -- or
-        eval "callbackToHaskell(null, undefined, true, 3.14, \"Eval\")"
-        -- or
-        $([evalJM|callbackToHaskell(null, undefined, true, 3.14, "Evaled JMacro")|])
-        -- or
-        jmfunc <- $([evalJM| \ a b c d e -> callbackToHaskell(a, b, c, d, e) |])
-        let callJM :: (JSNull, (), Bool, Double, String) -> JSC JSValueRef = call jmfunc jmfunc
-        callJM (JSNull, (), True, 3.14, "Via JMacro Evaled Function")
+            -- var a = []; for(var i = 0; i != 10; ++i) a[i] = i; console.log(a[5]);
+            array ([0..10]::[Double]) !! 5 >>= log
 
-        -- var a = []; for(var i = 0; i != 10; ++i) a[i] = i; console.log(a[5]);
-        array ([0..10]::[Double]) !! 5 >>= log
-
-        return ()
+            return ()
 
     -- What is this?
     elementOnclick heading $ do
