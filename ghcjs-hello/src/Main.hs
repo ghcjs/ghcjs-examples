@@ -39,7 +39,7 @@ import Graphics.UI.Gtk.WebKit.DOM.CSSStyleDeclaration
 import Language.Javascript.JSC
        (strToText, valToStr, JSNull(..), deRefVal, valToObject, js, jsg,
         valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new,
-        valToText, MakeValueRef(..), JSValue(..), evalJM, call, JSC(..), JSValueRef)
+        valToText, MakeValueRef(..), JSValue(..), evalJME, evalJM, call, JSC(..), JSValueRef)
 import Control.Monad.Reader (ReaderT(..))
 import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
        (webFrameGetGlobalContext)
@@ -227,7 +227,7 @@ main = do
             -- or
             $([evalJM|callbackToHaskell(null, undefined, true, 3.14, "Evaled JMacro")|])
             -- or
-            jmfunc <- $([evalJM| \ a b c d e -> callbackToHaskell(a, b, c, d, e) |])
+            jmfunc <- $([evalJME| \ a b c d e -> callbackToHaskell(a, b, c, d, e) |])
             let callJM :: (JSNull, (), Bool, Double, String) -> JSC JSValueRef = call jmfunc jmfunc
             callJM (JSNull, (), True, 3.14, "Via JMacro Evaled Function")
 
