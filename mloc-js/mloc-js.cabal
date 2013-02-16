@@ -16,7 +16,7 @@ library
                    text -any, webkit >=0.12.5, webkit-javascriptcore -any,
                    webkit-sodium -any, gloss -any, array -any
     exposed-modules: Demo.DOM Demo.JavaScriptFFI Demo.LazyLoading
-                     Demo.Threading Demo.TypeSafety
+                     Demo.Threading
     exposed: True
     buildable: True
     hs-source-dirs: src
