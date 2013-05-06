@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction #-}
+{-# LANGUAGE TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction, Rank2Types #-}
 module Main (
     main, lazyLoad_freecell
 ) where
@@ -37,7 +37,7 @@ import Graphics.UI.Gtk.WebKit.DOM.Node
 import Graphics.UI.Gtk.WebKit.DOM.CSSStyleDeclaration
        (cssStyleDeclarationSetProperty)
 import Language.Javascript.JSC
-       (strToText, valToStr, JSNull(..), deRefVal, valToObject, js, jsg,
+       (strToText, valToStr, JSNull(..), deRefVal, valToObject, js, JSF(..), js1, js4, jsg,
         valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new,
         valToText, MakeValueRef(..), JSValue(..), evalJME, evalJM, call, JSC(..), JSValueRef)
 import Control.Monad.Reader (ReaderT(..))
@@ -108,27 +108,28 @@ main = do
     runjs $ do
         -- Declare the javascript property getters we will be using
         document <- jsg "document"
-        let getElementById = js "getElementById"
-            getContext     = js "getContext"
+        let getElementById = js1 "getElementById"
+            getContext     = js1 "getContext"
             fillStyle      = js "fillStyle"
-            fillRect       = js "fillRect"
+            fillRect :: Double -> Double -> Double -> Double -> JSF
+            fillRect       = js4 "fillRect"
 
         -- var canvas = document.getElementById("canvas")
-        canvas <- document ^. getElementById # ["canvas"]
+        canvas <- document ^. getElementById "canvas"
 
         -- var ctx = canvas.getContext("2d")
-        ctx <- canvas ^. getContext # ["2d"]
+        ctx <- canvas ^. getContext "2d"
 
         liftIO . forkIO . forever $ do
             runjs $ do
                 -- ctx.fillStyle = "#00FF00"
                 -- ctx.fillRect( 0, 0, 150, 75 )
                 ctx ^. fillStyle <# "#00FF00"
-                ctx ^. fillRect # [0::Double, 0, 10, 10]
+                ctx ^. fillRect 0 0 10 10
             liftIO $ threadDelay 500000
             runjs $ do
                 ctx ^. fillStyle <# "#FF0000"
-                ctx ^. fillRect # [0::Double, 0, 10, 10]
+                ctx ^. fillRect 0 0 10 10
             liftIO $ threadDelay 500000
 
     -- We don't want to work on more than on prime number test at a time.
@@ -195,8 +196,8 @@ main = do
 
             -- console.log(Math.sin(1))
             math <- jsg "Math"
-            let sin = js "sin"
-            math ^. sin # (1::Double) >>= logNumber
+            let sin = js1 "sin"
+            math ^. sin (1::Double) >>= logNumber
 
             -- (new Date()).toString()
             -- (new Date(2013,1,1)).toString()

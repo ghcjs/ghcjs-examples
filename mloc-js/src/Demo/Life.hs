@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFoldable, TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction #-}
+{-# LANGUAGE DeriveFoldable, TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction, Rank2Types #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Demo.Life
@@ -25,8 +25,9 @@ import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
        (webFrameGetGlobalContext)
 import Graphics.UI.Gtk (postGUIAsync)
 import Control.Monad.Reader (ReaderT(..))
-import Language.Javascript.JSC ((<#), (#), js, jsg)
-import Control.Lens ((^.))
+import Language.Javascript.JSC
+       (MakeValueRef(..), MakeStringRef(..), JSF(..), jsg, js, js1, js4, (<#))
+import Control.Lens (IndexPreservingGetter, Getter, to, (^.))
 import qualified Data.Foldable as F (Foldable(..), Foldable)
 import Graphics.Gloss
        (Picture(..), Display(..), Color(..), black, red,
@@ -50,10 +51,12 @@ life webView doc example = do
                 <canvas #"canvas1" width="400" height="400" style="#{canvasStyle}">
         |]
 
-    let getElementById = js "getElementById"
-        getContext     = js "getContext"
+    let getElementById :: (MakeValueRef s, MakeStringRef s) => s -> JSF
+        getElementById = js1 "getElementById"
+        getContext     = js1 "getContext"
         fillStyle      = js "fillStyle"
-        fillRect       = js "fillRect"
+        fillRect :: Double -> Double -> Double -> Double -> JSF
+        fillRect       = js4 "fillRect"
         style          = js "style"
         visibility     = js "visibility"
 
@@ -63,14 +66,14 @@ life webView doc example = do
     runjs $ do
         document <- jsg "document"
 
-        canvas0 <- document ^. getElementById # ["canvas0"]
-        canvas1 <- document ^. getElementById # ["canvas1"]
+        canvas0 <- document ^. getElementById "canvas0"
+        canvas1 <- document ^. getElementById "canvas1"
 
         let simulate n (canvas0, canvas1) speed model = do
                 runjs $ do
-                    ctx <- canvas0 ^. getContext # ["2d"]
+                    ctx <- canvas0 ^. getContext "2d"
                     ctx ^. fillStyle <# "#FFFFFF" -- if n `mod` 2 == 0 then "#FFFFFF" else "#AA0000"
-                    ctx ^. fillRect # ([0, 0, 600, 400] :: [Double])
+                    ctx ^. fillRect 0 0 600 400
                     drawPicture ctx (300,200) (render model)
                     canvas1 ^. style . visibility <# "hidden"
                     canvas0 ^. style . visibility <# "visible"
@@ -80,7 +83,8 @@ life webView doc example = do
             drawPicture ctx orig (Pictures pics) = mapM_ (drawPicture ctx orig) pics
             drawPicture ctx (ox,oy) (Translate x y pic) = drawPicture ctx (ox+x, oy+y) pic
             drawPicture ctx (ox,oy) (Polygon [(a,b), _, (c,d), _]) = do
-                ctx ^. fillRect # (map realToFrac [ox+a, oy+b, c-a, d-b] :: [Double])
+                ctx ^. fillRect (realToFrac $ ox+a) (realToFrac $ oy+b)
+                                (realToFrac $ c-a)  (realToFrac $ d-b)
                 return ()
             drawPicture ctx orig (Color c pic) = do
                 ctx ^. fillStyle <# "#0000C0"

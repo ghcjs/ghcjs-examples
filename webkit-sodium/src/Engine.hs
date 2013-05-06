@@ -31,7 +31,7 @@ import Game
 import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
        (webFrameGetGlobalContext)
 import Control.Monad.Reader (ReaderT(..))
-import Language.Javascript.JSC (js, jsg, (!!), (#), (<#), fun, deRefVal, JSValue(..))
+import Language.Javascript.JSC (js1, js0, js, jsg, (!!), (#), (<#), fun, deRefVal, JSValue(..))
 import Control.Lens ((^.))
 
 -- Convert (game) world to/from screen co-ordinates.
@@ -140,20 +140,20 @@ engine webView containerId game = do
     gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
     (`runReaderT` gctxt) $ do
         document <- jsg "document"
-        let getElementById = js "getElementById"
+        let getElementById = js1 "getElementById"
             ontouchstart   = js "ontouchstart"
             ontouchmove    = js "ontouchmove"
             ontouchend     = js "ontouchend"
-            preventDefault = js "preventDefault"
+            preventDefault = js0 "preventDefault"
             touches        = js "touches"
             changedTouches = js "changedTouches"
-            jsLength       = js "lenght"
+            jsLength       = js "length"
             pageX          = js "pageX"
             pageY          = js "pageY"
 
-        c <- document ^. getElementById # [containerId]
+        c <- document ^. getElementById containerId
         c ^. ontouchstart <# fun $ \f this [e] -> do
-          e ^. preventDefault # ()
+          e ^. preventDefault
           n <- e ^. touches . jsLength >>= deRefVal
           when (n == ValNumber 1) $ do
               t <- (e ^. touches) !! 0
@@ -164,7 +164,7 @@ engine webView containerId game = do
                   liftIO . sanitize Down . sync . pushMouse . MouseDown . toWorld $ ((floor x)-cx, (floor y)-cy)
                 _ -> return ()
         c ^. ontouchmove <# fun $ \f this [e] -> do
-          e ^. preventDefault # ()
+          e ^. preventDefault
           n <- e ^. touches . jsLength >>= deRefVal
           when (n == ValNumber 1) $ do
               t <- (e ^. touches) !! 0
@@ -175,7 +175,7 @@ engine webView containerId game = do
                   liftIO . sync . pushMouse . MouseMove . toWorld $ ((floor x)-cx, (floor y)-cy)
                 _ -> return ()
         c ^. ontouchend <# fun $ \f this [e] -> do
-          e ^. preventDefault # ()
+          e ^. preventDefault
           n <- e ^. changedTouches . jsLength >>= deRefVal
           when (n == ValNumber 1) $ do
               t <- (e ^. changedTouches) !! 0
