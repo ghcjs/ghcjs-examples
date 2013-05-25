@@ -35,7 +35,7 @@ import Control.Concurrent (threadDelay, forkIO)
 -- code compiled is compiled with GHCJS
 main = do
   runWebGUI $ \ webView -> do
-    doc <- webViewGetDomDocument webView -- webView.document
+    Just doc <- webViewGetDomDocument webView -- webView.document
     Just body <- documentGetBody doc     -- doc.body
 
     -- If we are in the browser let's shrink the terminal window to make room

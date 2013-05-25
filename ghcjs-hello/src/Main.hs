@@ -58,7 +58,7 @@ main = do
   -- but just returns the browser window when compiled to JavaScript
   runWebGUI $ \ webView -> postGUIAsync $ do
     -- WebKitGtk provides the normal W3C DOM functions
-    doc <- webViewGetDomDocument webView
+    Just doc <- webViewGetDomDocument webView
     Just body <- documentGetBody doc
 
     -- Lets use some Hamlet to replace HTerm with some HTML

@@ -1,8 +1,9 @@
 darcs:http://patch-tag.com/r/hamish/gtk2hs
 darcs:http://patch-tag.com/r/hamish/webkit
-git://github.com/ghcjs/webkit-javascriptcore.git
+https://github.com/ghcjs/webkit-javascriptcore.git
 https://github.com/ghcjs/ghcjs-dom.git
 https://github.com/ghcjs/jsc.git
+https://github.com/ghcjs/sodium.git
 ./ghcjs-hello
 ./multiple-pages
 ./webkit-sodium

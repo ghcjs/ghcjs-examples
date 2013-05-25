@@ -7,8 +7,8 @@ license-file: ""
 data-dir: ""
 
 executable ghcjs-hello
-    build-depends: lens >=3.8.5 && <3.9,
-                   containers >=0.5.0.0 && <0.6, random >=1.0.1.1 && <1.1,
+    build-depends: lens -any,
+                   containers -any, random -any,
                    template-haskell -any, base -any, blaze-html -any, filepath -any,
                    hamlet -any, text -any, blaze-markup -any, webkit >=0.12.5,
                    ghcjs-dom -any, mtl -any, sodium -any, webkit-sodium -any,

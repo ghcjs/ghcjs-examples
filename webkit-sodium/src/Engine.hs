@@ -117,7 +117,7 @@ engine :: WebView -> String -> (Event MouseEvent -> Reactive (BehaviorTree [Spri
 engine webView containerId game = do
     putStrLn "Haskell Freecell"
 
-    doc <- webViewGetDomDocument webView
+    Just doc <- webViewGetDomDocument webView
     Just container <- fmap castToHTMLElement <$> documentGetElementById doc containerId
     -- Construct a mouse event that lives in FRP land, and a push action
     -- that allows us to push values into it from IO land.

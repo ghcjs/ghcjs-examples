@@ -46,7 +46,7 @@ main = runWebGUI $ \ webView -> do
     _       -> putStrLn "Hello from JavaScript land"
   hFlush stdout
 
-  doc <- webViewGetDomDocument webView
+  Just doc <- webViewGetDomDocument webView
 
   -- Try to find prime number entry
   mbPrimeIn  <- fmap castToHTMLInputElement <$> documentGetElementById doc "prime-in"
