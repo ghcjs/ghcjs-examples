@@ -5,7 +5,6 @@ build-type: Simple
 license: BSD3
 license-file: ""
 data-dir: "data"
-data-files: spin.gif
 
 library
     build-depends: base -any, blaze-html -any, blaze-markup -any,

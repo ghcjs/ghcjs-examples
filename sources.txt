@@ -7,4 +7,5 @@ https://github.com/ghcjs/sodium.git
 ./ghcjs-hello
 ./multiple-pages
 ./webkit-sodium
+./mloc-js
 
