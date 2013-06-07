@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script language="javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+    <script language="javascript" src="lib.js"></script>
+    <script language="javascript" src="rts.js"></script>
+    <script language="javascript" src="lib1.js"></script>
+    <script language="javascript" src="out.js"></script>
+  </head>
+  <body>
+    <input type="text" id="factorial_input" />
+    <div id="factorial_output"></div>
+  </body>
+  <script language="javascript">
+
+$('#factorial_input').on('keyup change', function(e) {
+  var o = { input: $('#factorial_input').val() };
+  h$runSync( h$c2( h$ap1_e
+                 , h$mainZCMainzifactorial
+                 , h$c1(h$ghcjszmprimZCGHCJSziPrimziJSRef_con_e, o)
+                 )
+           , false
+           );
+  $('#factorial_output').text(o.output);
+});
+
+  </script>
+</html>
