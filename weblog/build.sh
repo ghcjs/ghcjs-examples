@@ -10,7 +10,7 @@
 ( cd sync && ghcjs -o sync sync.hs && cp sync.html sync.jsexe/index.html )
 
 # http://weblog.luite.com/wordpress/?p=127
-cabal install --ghcjs sodium random
+cabal install --ghcjs sodium random vector-space
 
 ( cd counter && ghcjs -o counter counter.hs && cp counter.html counter.jsexe/index.html )
 ( cd calculator && ghcjs -o calculator calculator.hs && cp calculator.html calculator.jsexe/index.html )
