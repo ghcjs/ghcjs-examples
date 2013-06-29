@@ -15,39 +15,38 @@ import           GHCJS.Marshal
 import           JavaScript.JQuery
 
 import           FRP.Sodium
+import           GHCJS.DOM (runWebGUI, currentDocument)
+import           GHCJS.DOM.DOMWindow (domWindowGetDocument)
+import           GHCJS.DOM.Types (HTMLElement, Element, unHTMLElement,
+                    ElementClass(..))
+import           GHCJS.DOM.Document (documentCreateElementNS,
+                    documentGetElementsByTagName, documentGetBody)
+import           GHCJS.DOM.Node (nodeAppendChild)
+import           GHCJS.DOM.Element (elementSetAttribute)
 
-#ifdef __GHCJS__
--- create an element in the SVG namespace
-foreign import javascript unsafe "document.createElementNS('http://www.w3.org/2000/svg',$1)"
-   createSvg :: JSString -> IO Element
-foreign import javascript unsafe "document.getElementsByTagName($1)"
-   getElementsByTagName :: JSString -> IO (JSArray a)
-foreign import javascript unsafe "$3.setAttribute($1,$2)"
-   setAttribute :: JSString -> JSRef a -> JSRef b -> IO ()
-foreign import javascript unsafe "$2.appendChild($1)"
-   appendChild :: Element -> Element -> IO ()
-#else
-createSvg = undefined
-appendChild = undefined
-getElementsByTagName = undefined
-setAttribute = undefined
-#endif
+-- | create an element in the SVG namespace
+createSvg :: String -> IO (Maybe Element)
+createSvg n = do
+    Just doc <- currentDocument
+    documentCreateElementNS doc ("http://www.w3.org/2000/svg"::String) n
 
-setAttribute' :: ToJSRef a => JSString -> a -> JSRef b -> IO ()
-setAttribute' a v o = toJSRef v >>= \v' -> setAttribute a v' o
+setAttribute' :: (ElementClass o, ToJSRef v) => JSString -> v -> o -> IO ()
+setAttribute' a v o = toJSRef v >>= \v' -> elementSetAttribute o a (castRef v' :: JSString)
 
-main = do
-  body <- indexArray 0 =<< getElementsByTagName "body"
-  svg <- createSvg "svg"
-  appendChild svg body
-  setAttribute' "width" (400::Int) svg >> setAttribute' "height" (400::Int) svg
-  t <- fmap ((*5) . fst) <$> mousePosition body
-  let sun   = pure (200, 200)
-      earth = object (1/365) 150 sun   t
-      moon  = object (1/30)  25  earth t
-  drawObject svg "yellow" 20 sun
-  drawObject svg "blue"   8  earth
-  drawObject svg "grey"   3  moon
+main =
+  runWebGUI $ \ webView -> do
+    Just doc <- domWindowGetDocument webView
+    Just body <- documentGetBody doc
+    Just svg <- createSvg "svg"
+    nodeAppendChild body (Just svg)
+    setAttribute' "width" (400::Int) svg >> setAttribute' "height" (400::Int) svg
+    t <- fmap ((*5) . fst) <$> mousePosition body
+    let sun   = pure (200, 200)
+        earth = object (1/365) 150 sun   t
+        moon  = object (1/30)  25  earth t
+    drawObject svg "yellow" 20 sun
+    drawObject svg "blue"   8  earth
+    drawObject svg "grey"   3  moon
 
 object :: Double
        -> Double
@@ -63,15 +62,15 @@ object speed r center time =
 drawObject :: Element -> Text -> Double -> Behaviour (Double, Double) -> IO ()
 drawObject parent color r x = do
   putStrLn (T.unpack color)
-  circle <- createSvg "circle"
+  Just circle <- createSvg "circle"
   let p .= v = setAttribute' p v circle
   "fill" .= color >> "r" .= r
-  appendChild circle parent
+  nodeAppendChild parent (Just circle)
   sync $ listen (values x) $
     \(x,y) -> "cx" .= x >> "cy" .= y
   return ()
 
-mousePosition :: Element -> IO (Behaviour (Double, Double))
+mousePosition :: ElementClass e => e -> IO (Behaviour (Double, Double))
 mousePosition elem = do
   (b, push) <- sync $ newBehaviour (0,0)
   let handler ev = do
