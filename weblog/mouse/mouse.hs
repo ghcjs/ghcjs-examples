@@ -18,7 +18,7 @@ import           FRP.Sodium
 import           GHCJS.DOM (runWebGUI, currentDocument)
 import           GHCJS.DOM.DOMWindow (domWindowGetDocument)
 import           GHCJS.DOM.Types (HTMLElement, Element, unHTMLElement,
-                    ElementClass(..))
+                    IsElement(..))
 import           GHCJS.DOM.Document (documentCreateElementNS,
                     documentGetElementsByTagName, documentGetBody)
 import           GHCJS.DOM.Node (nodeAppendChild)
@@ -30,7 +30,7 @@ createSvg n = do
     Just doc <- currentDocument
     documentCreateElementNS doc ("http://www.w3.org/2000/svg"::String) n
 
-setAttribute' :: (ElementClass o, ToJSRef v) => JSString -> v -> o -> IO ()
+setAttribute' :: (IsElement o, ToJSRef v) => JSString -> v -> o -> IO ()
 setAttribute' a v o = toJSRef v >>= \v' -> elementSetAttribute o a (castRef v' :: JSString)
 
 main =
@@ -70,7 +70,7 @@ drawObject parent color r x = do
     \(x,y) -> "cx" .= x >> "cy" .= y
   return ()
 
-mousePosition :: ElementClass e => e -> IO (Behaviour (Double, Double))
+mousePosition :: IsElement e => e -> IO (Behaviour (Double, Double))
 mousePosition elem = do
   (b, push) <- sync $ newBehaviour (0,0)
   let handler ev = do
