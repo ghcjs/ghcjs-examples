@@ -1,26 +1,24 @@
+{-# LANGUAGE CPP #-}
 module Engine where
 
 import Prelude hiding ((!!))
-import Graphics.UI.Gtk.WebKit.WebView
-       (webViewGetMainFrame, webViewNew, webViewGetDomDocument)
-import Graphics.UI.Gtk.WebKit.DOM.Document
+import GHCJS.DOM.Document
        (documentCreateElement, documentGetElementById, documentGetBody,
         documentGetDocumentElement)
-import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
+import GHCJS.DOM.HTMLElement
        (htmlElementInsertAdjacentElement, htmlElementSetInnerHTML,
         htmlElementInsertAdjacentHTML)
-import Graphics.UI.Gtk.WebKit.Types
-       (WebView(..), castToHTMLElement, castToElement, Document,
-        HTMLElement, ElementClass, MouseEventClass, gTypeElement)
+import GHCJS.DOM.Types
+       (IsDOMWindow(..), castToHTMLElement, castToElement, Document,
+        HTMLElement, IsElement, IsMouseEvent, gTypeElement)
 import Control.Applicative ((<$>))
 import Control.Arrow
 import Control.Monad.Trans ( liftIO )
-import Graphics.UI.Gtk.General.Enums (WindowPosition(..))
-import Graphics.UI.Gtk.WebKit.DOM.Element
-import Graphics.UI.Gtk.WebKit.DOM.EventM
-import Graphics.UI.Gtk.WebKit.DOM.MouseEvent
-import Graphics.UI.Gtk.WebKit.DOM.Node
-import System.Glib.GObject (isA)
+import GHCJS.DOM.Element
+import GHCJS.DOM.EventM
+import GHCJS.DOM.MouseEvent
+import GHCJS.DOM.Node
+import GHCJS.DOM.DOMWindow
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.IORef
@@ -28,11 +26,11 @@ import Data.Maybe
 
 import FRP.Sodium
 import Game
-import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
-       (webFrameGetGlobalContext)
 import Control.Monad.Reader (ReaderT(..))
+#ifdef MIN_VERSION_jsc
 import Language.Javascript.JSC (js1, js0, js, jsg, (!!), (#), (<#), fun, deRefVal, JSValue(..))
 import Control.Lens ((^.))
+#endif
 
 -- Convert (game) world to/from screen co-ordinates.
 -- World co-ordinates are x = -1400..1400, y = -1000 to 1000
@@ -60,14 +58,14 @@ fromWorldRect ((xOrig,yOrig),(wid,hei)) = (
 
 -- | Get the mouse position relative to the top-left corner of the specified
 -- HTML element.
-getXYRelativeTo :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
+getXYRelativeTo :: (IsElement elt, IsMouseEvent e, IsElement t) =>
                    Document -> elt -> EventM e t (Int, Int)
 getXYRelativeTo doc container = do
     (px, py) <- mousePageXY doc container
     (cx, cy) <- liftIO $ elementPageXY doc container
     return (px - cx, py - cy)
 
-mousePageXY :: (ElementClass elt, MouseEventClass e, ElementClass t) =>
+mousePageXY :: (IsElement elt, IsMouseEvent e, IsElement t) =>
                Document -> elt -> EventM e t (Int, Int)
 mousePageXY doc container = do
     (x, y) <- mouseClientXY
@@ -81,7 +79,7 @@ mousePageXY doc container = do
         return (x + bodyScrollLeft + docEltScrollLeft, y + bodyScrollTop + docEltScrollTop)
 
 -- | Get the top/left position of this element relative to the page.
-elementPageXY :: ElementClass elt => Document -> elt -> IO (Int, Int)
+elementPageXY :: IsElement elt => Document -> elt -> IO (Int, Int)
 elementPageXY doc elt = do
     Just body <- documentGetBody doc
     traverse body (castToElement elt) (0,0)
@@ -113,11 +111,11 @@ data ButtonState = Up | Down deriving Eq
 
 -- | Instantiate the game, handling mouse events and drawing the output.
 -- Returns an \'unlisten\' action to de-register listeners.
-engine :: WebView -> String -> (Event MouseEvent -> Reactive (BehaviorTree [Sprite])) -> IO (IO ())
-engine webView containerId game = do
+engine :: IsDOMWindow w => w -> String -> (Event MouseEvent -> Reactive (BehaviorTree [Sprite])) -> IO (IO ())
+engine window containerId game = do
     putStrLn "Haskell Freecell"
 
-    Just doc <- webViewGetDomDocument webView
+    Just doc <- domWindowGetDocument window
     Just container <- fmap castToHTMLElement <$> documentGetElementById doc containerId
     -- Construct a mouse event that lives in FRP land, and a push action
     -- that allows us to push values into it from IO land.
@@ -137,7 +135,8 @@ engine webView containerId game = do
         liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ xy
 
     (cx, cy) <- elementPageXY doc container
-    gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
+#ifdef MIN_VERSION_jsc
+    gctxt <- domWindowGetMainFrame window >>= webFrameGetGlobalContext
     (`runReaderT` gctxt) $ do
         document <- jsg "document"
         let getElementById = js1 "getElementById"
@@ -185,6 +184,7 @@ engine webView containerId game = do
                 (ValNumber x, ValNumber y) ->
                   liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ ((floor x)-cx, (floor y)-cy)
                 _ -> return ()
+#endif
 
     -- Instantiate the FRP logic: We give it our mouse event, and it gives us back the
     -- sprite behaviours that tell us what to draw on the screen.
@@ -194,7 +194,7 @@ engine webView containerId game = do
     -- web page.
     showAll doc container sprites
 
-showAll :: ElementClass elt =>
+showAll :: IsElement elt =>
              Document -> elt -> BehaviorTree [Sprite] -> IO (IO ())
 showAll doc container sprites =
     -- Pass the zIndex through as state. The order of the FRP's output determines
