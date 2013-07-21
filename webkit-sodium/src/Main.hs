@@ -5,8 +5,6 @@ module Main (
 import Engine
 import Freecell
 
-import GHCJS.DOM.DOMWindow
-       (domWindowGetDocument)
 import GHCJS.DOM.Document
        (documentCreateElement, documentGetElementById, documentGetBody)
 import GHCJS.DOM.HTMLElement
@@ -23,14 +21,14 @@ import GHCJS.DOM.Node
 import Control.Monad
 import System.Random
 import FRP.Sodium
-import GHCJS.DOM (runWebGUI)
+import GHCJS.DOM (runWebGUI, webViewGetDomDocument)
 import Control.Concurrent (threadDelay, forkIO)
 
 -- Comments show how what these FFI calls should work when the
 -- code compiled is compiled with GHCJS
 main = do
   runWebGUI $ \ webView -> do
-    Just doc <- domWindowGetDocument webView -- webView.document
+    Just doc <- webViewGetDomDocument webView -- webView.document
     Just body <- documentGetBody doc     -- doc.body
 
     -- If we are in the browser let's shrink the terminal window to make room

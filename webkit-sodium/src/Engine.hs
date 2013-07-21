@@ -8,8 +8,9 @@ import GHCJS.DOM.Document
 import GHCJS.DOM.HTMLElement
        (htmlElementInsertAdjacentElement, htmlElementSetInnerHTML,
         htmlElementInsertAdjacentHTML)
+import GHCJS.DOM (WebView, webViewGetDomDocument)
 import GHCJS.DOM.Types
-       (IsDOMWindow(..), castToHTMLElement, castToElement, Document,
+       (castToHTMLElement, castToElement, Document,
         HTMLElement, IsElement, IsMouseEvent, gTypeElement)
 import Control.Applicative ((<$>))
 import Control.Arrow
@@ -18,7 +19,6 @@ import GHCJS.DOM.Element
 import GHCJS.DOM.EventM
 import GHCJS.DOM.MouseEvent
 import GHCJS.DOM.Node
-import GHCJS.DOM.DOMWindow
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.IORef
@@ -28,7 +28,9 @@ import FRP.Sodium
 import Game
 import Control.Monad.Reader (ReaderT(..))
 #ifdef MIN_VERSION_jsc
-import Language.Javascript.JSC (js1, js0, js, jsg, (!!), (#), (<#), fun, deRefVal, JSValue(..))
+import Language.Javascript.JSC
+        (js2, js1, js0, js, jsg, (!!), (#), (<#), fun,
+         deRefVal, JSValue(..), runJSC)
 import Control.Lens ((^.))
 #endif
 
@@ -111,11 +113,11 @@ data ButtonState = Up | Down deriving Eq
 
 -- | Instantiate the game, handling mouse events and drawing the output.
 -- Returns an \'unlisten\' action to de-register listeners.
-engine :: IsDOMWindow w => w -> String -> (Event MouseEvent -> Reactive (BehaviorTree [Sprite])) -> IO (IO ())
-engine window containerId game = do
+engine :: WebView -> String -> (Event MouseEvent -> Reactive (BehaviorTree [Sprite])) -> IO (IO ())
+engine webView containerId game = do
     putStrLn "Haskell Freecell"
 
-    Just doc <- domWindowGetDocument window
+    Just doc <- webViewGetDomDocument webView
     Just container <- fmap castToHTMLElement <$> documentGetElementById doc containerId
     -- Construct a mouse event that lives in FRP land, and a push action
     -- that allows us to push values into it from IO land.
@@ -136,22 +138,19 @@ engine window containerId game = do
 
     (cx, cy) <- elementPageXY doc container
 #ifdef MIN_VERSION_jsc
-    gctxt <- domWindowGetMainFrame window >>= webFrameGetGlobalContext
-    (`runReaderT` gctxt) $ do
+    runJSC webView $ do
         document <- jsg "document"
         let getElementById = js1 "getElementById"
-            ontouchstart   = js "ontouchstart"
-            ontouchmove    = js "ontouchmove"
-            ontouchend     = js "ontouchend"
             preventDefault = js0 "preventDefault"
             touches        = js "touches"
             changedTouches = js "changedTouches"
             jsLength       = js "length"
             pageX          = js "pageX"
             pageY          = js "pageY"
+            addEventListener = js2 "addEventListener"
 
         c <- document ^. getElementById containerId
-        c ^. ontouchstart <# fun $ \f this [e] -> do
+        c ^. addEventListener "touchstart" (fun $ \f this [e] -> do
           e ^. preventDefault
           n <- e ^. touches . jsLength >>= deRefVal
           when (n == ValNumber 1) $ do
@@ -161,8 +160,8 @@ engine window containerId game = do
               case (vx, vy) of
                 (ValNumber x, ValNumber y) ->
                   liftIO . sanitize Down . sync . pushMouse . MouseDown . toWorld $ ((floor x)-cx, (floor y)-cy)
-                _ -> return ()
-        c ^. ontouchmove <# fun $ \f this [e] -> do
+                _ -> return ())
+        c ^. addEventListener "touchmove" (fun $ \f this [e] -> do
           e ^. preventDefault
           n <- e ^. touches . jsLength >>= deRefVal
           when (n == ValNumber 1) $ do
@@ -172,8 +171,8 @@ engine window containerId game = do
               case (vx, vy) of
                 (ValNumber x, ValNumber y) ->
                   liftIO . sync . pushMouse . MouseMove . toWorld $ ((floor x)-cx, (floor y)-cy)
-                _ -> return ()
-        c ^. ontouchend <# fun $ \f this [e] -> do
+                _ -> return ())
+        c ^. addEventListener "touchend" (fun $ \f this [e] -> do
           e ^. preventDefault
           n <- e ^. changedTouches . jsLength >>= deRefVal
           when (n == ValNumber 1) $ do
@@ -183,7 +182,7 @@ engine window containerId game = do
               case (vx, vy) of
                 (ValNumber x, ValNumber y) ->
                   liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ ((floor x)-cx, (floor y)-cy)
-                _ -> return ()
+                _ -> return ())
 #endif
 
     -- Instantiate the FRP logic: We give it our mouse event, and it gives us back the

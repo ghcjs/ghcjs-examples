@@ -9,22 +9,16 @@ data-dir: ""
 
 library
     build-depends: QuickCheck -any, base -any, mtl -any,
-                   sodium -any, array -any, filepath -any, random -any, ghcjs-dom -any
-
-    if !impl(ghcjs)
-        build-depends: glib -any, gtk -any, webkit -any, webkit-javascriptcore -any, jsc -any,
-                       lens -any
+                   sodium -any, array -any, filepath -any, random -any, ghcjs-dom -any,
+                   jsc -any, lens -any
 
     exposed-modules: Engine, Freecell, Game
     hs-source-dirs: src
 
 executable freecell
     build-depends: QuickCheck -any, base -any, mtl -any,
-                   sodium -any, array -any, filepath -any, random -any, ghcjs-dom -any
-
-    if !impl(ghcjs)
-        build-depends: glib -any, gtk -any, webkit -any, webkit-javascriptcore -any, jsc -any,
-                       lens -any
+                   sodium -any, array -any, filepath -any, random -any, ghcjs-dom -any,
+                   jsc -any, lens -any
 
     main-is: Main.hs
     buildable: True
