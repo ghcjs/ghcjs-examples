@@ -18,20 +18,20 @@ module Demo.Threading (
 import WebKitUtils
        (getDivElementById, getInputElementById, getImageElementById)
 import Control.Monad.Trans ( liftIO )
-import Graphics.UI.Gtk.WebKit.Types
+import GHCJS.DOM (postGUISync)
+import GHCJS.DOM.Types
        (Document(..), HTMLDivElement(..))
 import Control.Concurrent
        (putMVar, tryTakeMVar, takeMVar, newEmptyMVar, threadDelay, forkIO)
 import Control.Monad (forever, forM_)
-import Graphics.UI.Gtk (postGUIAsync, postGUISync)
-import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
+import GHCJS.DOM.HTMLElement
        (htmlElementSetInnerHTML, htmlElementSetInnerText)
 import Data.Text.Lazy (Text, unpack)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Hamlet (Html, shamlet)
-import Graphics.UI.Gtk.WebKit.DOM.HTMLInputElement
+import GHCJS.DOM.HTMLInputElement
        (htmlInputElementGetValue)
-import Graphics.UI.Gtk.WebKit.DOM.Element
+import GHCJS.DOM.Element
        (elementSetAttribute, elementOnkeyup, elementOnkeypress,
         elementOnkeydown)
 

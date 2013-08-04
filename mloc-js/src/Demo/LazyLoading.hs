@@ -27,7 +27,7 @@ module Demo.LazyLoading (
     lazyLoad_freecell
 ) where
 
-import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
+import GHCJS.DOM.HTMLElement
        (htmlElementSetInnerHTML)
 import Engine (engine)
 import Freecell (mkFreecell)

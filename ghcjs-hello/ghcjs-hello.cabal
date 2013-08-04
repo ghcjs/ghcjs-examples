@@ -10,9 +10,9 @@ executable ghcjs-hello
     build-depends: lens -any,
                    containers -any, random -any,
                    template-haskell -any, base -any, blaze-html -any, filepath -any,
-                   hamlet -any, text -any, blaze-markup -any, webkit >=0.12.5,
+                   hamlet -any, text -any, blaze-markup -any,
                    ghcjs-dom -any, mtl -any, sodium -any, webkit-sodium -any,
-                   webkit-javascriptcore -any, jsc >=0.1.0.0 && <0.2, jmacro -any, gtk -any
+                   jsc >=0.1.0.0 && <0.2, jmacro -any
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src

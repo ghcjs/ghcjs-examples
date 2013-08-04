@@ -26,10 +26,10 @@ module Demo.DOM (
     helloDOM
 ) where
 
-import Graphics.UI.Gtk.WebKit.DOM.Document (documentGetElementById)
-import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
+import GHCJS.DOM.Document (documentGetElementById)
+import GHCJS.DOM.HTMLElement
        (htmlElementSetInnerText)
-import Graphics.UI.Gtk.WebKit.Types (castToHTMLElement)
+import GHCJS.DOM.Types (castToHTMLElement)
 
 helloDOM doc = do
     maybeExample <- documentGetElementById doc "example"

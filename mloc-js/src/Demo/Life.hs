@@ -13,20 +13,18 @@ module Demo.Life (
     life
 ) where
 
-import Graphics.UI.Gtk.WebKit.Types
+import GHCJS.DOM.Types
        (HTMLDivElement(..), Document(..), WebView(..))
-import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
+import GHCJS.DOM.HTMLElement
        (htmlElementSetInnerHTML)
 import Data.Text.Lazy (unpack)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Hamlet (shamlet)
-import Graphics.UI.Gtk.WebKit.WebView (webViewGetMainFrame)
-import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
-       (webFrameGetGlobalContext)
-import Graphics.UI.Gtk (postGUIAsync)
+import GHCJS.DOM (webViewGetDomDocument)
 import Control.Monad.Reader (ReaderT(..))
 import Language.Javascript.JSC
-       (MakeValueRef(..), MakeStringRef(..), JSF(..), jsg, js, js1, js4, (<#))
+       (MakeValueRef(..), MakeStringRef(..), JSF(..), runJSC,
+        jsg, js, js1, js4, (<#))
 import Control.Lens (IndexPreservingGetter, Getter, to, (^.))
 import qualified Data.Foldable as F (Foldable(..), Foldable)
 import Graphics.Gloss
@@ -60,17 +58,14 @@ life webView doc example = do
         style          = js "style"
         visibility     = js "visibility"
 
-    gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
-    let runjs f = f `runReaderT` gctxt >> return ()
-
-    runjs $ do
+    runJSC webView $ do
         document <- jsg "document"
 
         canvas0 <- document ^. getElementById "canvas0"
         canvas1 <- document ^. getElementById "canvas1"
 
         let simulate n (canvas0, canvas1) speed model = do
-                runjs $ do
+                runJSC webView $ do
                     ctx <- canvas0 ^. getContext "2d"
                     ctx ^. fillStyle <# "#FFFFFF" -- if n `mod` 2 == 0 then "#FFFFFF" else "#AA0000"
                     ctx ^. fillRect 0 0 600 400

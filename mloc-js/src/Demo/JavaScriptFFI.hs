@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveFoldable, TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction #-}
+{-# LANGUAGE CPP, DeriveFoldable, TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction #-}
 -----------------------------------------------------------------------------
 --
 -- Module      :  Demo.JavaScriptFFI
@@ -14,21 +14,18 @@ module Demo.JavaScriptFFI (
   , callHaskell
 ) where
 
-import Graphics.UI.Gtk.WebKit.Types
+import GHCJS.DOM.Types
        (WebView(..), Document(..), HTMLDivElement(..))
-import Graphics.UI.Gtk.WebKit.DOM.HTMLCanvasElement
+import GHCJS.DOM.HTMLCanvasElement
        (htmlCanvasElementSetHeight, htmlCanvasElementSetWidth)
-import Graphics.UI.Gtk.WebKit.DOM.Node (nodeAppendChild)
+import GHCJS.DOM.Node (nodeAppendChild)
 import Control.Lens ((^.))
 import Language.Javascript.JSC
-       (eval, evalJM, valToNumber, fun, jsg, js, (#), (<#))
+       (eval, evalJM, valToNumber, fun, jsg, js, (#), (<#), runJSC_)
 import WebKitUtils
-import Graphics.UI.Gtk.WebKit.WebView (webViewGetMainFrame)
-import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
-       (webFrameGetGlobalContext)
-import Graphics.UI.Gtk (postGUIAsync)
+import GHCJS.DOM (webViewGetDomDocument)
 import Control.Monad.Reader (ReaderT(..))
-import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
+import GHCJS.DOM.HTMLElement
        (htmlElementSetInnerHTML)
 import Data.Text.Lazy (unpack)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
@@ -36,7 +33,9 @@ import Text.Hamlet (shamlet)
 import Control.Monad (void)
 import Control.Monad.Trans ( liftIO )
 import Demo.Threading (isPrime)
+#ifdef MIN_VERSION_jmacro
 import Language.Javascript.JMacro
+#endif
 
 canvasDemo :: WebView -> Document -> HTMLDivElement -> IO ()
 canvasDemo webView doc example = do
@@ -45,10 +44,7 @@ canvasDemo webView doc example = do
             <canvas #"canvas" width="600" height="400">
         |]
 
-    gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
-    let runjs f = postGUIAsync . void $ f `runReaderT` gctxt
-
-    runjs $ do
+    runJSC_ webView $ do
         document <- jsg "document"
         let getElementById = js "getElementById"
             getContext     = js "getContext"
@@ -66,10 +62,7 @@ canvasDemo webView doc example = do
 
 callHaskell :: WebView -> IO ()
 callHaskell webView = do
-    gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
-    let runjs f = postGUIAsync . void $ f `runReaderT` gctxt
-
-    runjs $ do
+    runJSC_ webView $ do
         jsg "checkPrime" <# fun $ \ f this [a] -> do
             num <- valToNumber a
             let i = round num

@@ -17,16 +17,15 @@ module WebKitUtils (
   , createCanvasElement
 ) where
 
-import Graphics.UI.Gtk.WebKit.Types
-       (HTMLImageElement(..), castToHTMLImageElement,
+import GHCJS.DOM.Types
+       (HTMLImageElement(..), castToHTMLImageElement, GType, isA,
         gTypeHTMLImageElement, castToHTMLElement, gTypeHTMLElement,
         HTMLElement(..), HTMLCanvasElement(..), castToHTMLCanvasElement,
         gTypeHTMLCanvasElement, HTMLInputElement(..), HTMLDivElement(..),
         Element(..), DocumentClass, castToHTMLInputElement,
         gTypeHTMLInputElement, castToHTMLDivElement, gTypeHTMLDivElement)
-import Graphics.UI.Gtk.WebKit.DOM.Document
+import GHCJS.DOM.Document
        (documentCreateElement, documentGetElementById)
-import Graphics.UI.Gtk (GType, isA)
 
 
 getHTMLElementById :: DocumentClass doc => doc -> String -> IO HTMLElement

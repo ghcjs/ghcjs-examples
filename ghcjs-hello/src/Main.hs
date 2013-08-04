@@ -6,43 +6,38 @@ module Main (
 import Prelude hiding ((!!))
 import Control.Monad.Trans ( liftIO )
 import System.IO (stderr, hPutStrLn, stdout, hFlush)
-import Graphics.UI.Gtk (postGUIAsync, postGUISync)
-import Graphics.UI.Gtk.WebKit.GHCJS (runWebGUI)
-import Graphics.UI.Gtk.WebKit.WebView
-       (webViewGetMainFrame, webViewGetDomDocument)
-import Graphics.UI.Gtk.WebKit.DOM.Document
+import GHCJS.DOM (runWebGUI, postGUISync, postGUIAsync, webViewGetDomDocument)
+import GHCJS.DOM.Document
        (documentCreateElement, documentGetElementById, documentGetBody)
-import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
+import GHCJS.DOM.HTMLElement
        (htmlElementSetInnerText, htmlElementSetInnerHTML)
 import Data.Text.Lazy (Text, unpack)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Hamlet (shamlet)
 import Text.Blaze.Html (Html)
-import Graphics.UI.Gtk.WebKit.Types
+import GHCJS.DOM.Types
        (Node(..), castToHTMLElement, castToHTMLDivElement,
         castToHTMLInputElement)
 import Control.Applicative ((<$>))
-import Graphics.UI.Gtk.WebKit.DOM.Element
+import GHCJS.DOM.Element
        (elementGetStyle, elementSetAttribute, elementOnclick,
         elementOnkeypress, elementOnkeyup, elementOnkeydown, elementFocus)
-import Graphics.UI.Gtk.WebKit.DOM.HTMLInputElement
+import GHCJS.DOM.HTMLInputElement
        (htmlInputElementGetValue)
 import Control.Concurrent
        (tryTakeMVar, takeMVar, threadDelay, putMVar, forkIO, newEmptyMVar)
 import Control.Monad (when, forever)
-import Graphics.UI.Gtk.WebKit.DOM.EventM
+import GHCJS.DOM.EventM
        (mouseShiftKey, mouseCtrlKey)
-import Graphics.UI.Gtk.WebKit.DOM.Node
+import GHCJS.DOM.Node
        (nodeInsertBefore, nodeAppendChild)
-import Graphics.UI.Gtk.WebKit.DOM.CSSStyleDeclaration
+import GHCJS.DOM.CSSStyleDeclaration
        (cssStyleDeclarationSetProperty)
 import Language.Javascript.JSC
        (strToText, valToStr, JSNull(..), deRefVal, valToObject, js, JSF(..), js1, js4, jsg,
-        valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new,
+        valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new, runJSC_,
         valToText, MakeValueRef(..), JSValue(..), evalJME, evalJM, call, JSC(..), JSValueRef)
 import Control.Monad.Reader (ReaderT(..))
-import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
-       (webFrameGetGlobalContext)
 import qualified Data.Text as T (unpack, pack)
 import FRP.Sodium
 import Engine
@@ -56,7 +51,7 @@ import Control.Lens ((^.))
 main = do
   -- Running a GUI creates a WebKitGtk window in native code,
   -- but just returns the browser window when compiled to JavaScript
-  runWebGUI $ \ webView -> postGUIAsync $ do
+  runWebGUI $ \ webView -> do
     -- WebKitGtk provides the normal W3C DOM functions
     Just doc <- webViewGetDomDocument webView
     Just body <- documentGetBody doc
@@ -99,11 +94,10 @@ main = do
     Just heading  <- fmap castToHTMLElement      <$> documentGetElementById doc "heading"
 
     -- You can also use your favorite JavaScript libraries
-    gctxt <- webViewGetMainFrame webView >>= webFrameGetGlobalContext
 
     -- Run JavaScript using postGUISync to make sure it runs on the Gtk thread.
     -- This should avoid threading issues when using WebKitGTK+.
-    let runjs f = postGUIAsync $ f `runReaderT` gctxt >> return ()
+    let runjs = postGUIAsync . runJSC_ webView
 
     runjs $ do
         -- Declare the javascript property getters we will be using

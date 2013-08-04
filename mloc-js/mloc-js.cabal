@@ -9,11 +9,11 @@ data-dir: "data"
 library
     build-depends: base -any, blaze-html -any, blaze-markup -any,
                    containers >=0.5.0.0 && <0.6, filepath -any, ghcjs-dom -any,
-                   gtk -any, hamlet -any, hscolour >=1.20.3 && <1.21, jmacro -any,
+                   hamlet -any, hscolour >=1.20.3 && <1.21,
                    jsc >=0.1.0.0 && <0.2, lens >=3.8.5 && <3.11, mtl -any,
                    random >=1.0.1.1 && <1.1, sodium -any, template-haskell -any,
-                   text -any, webkit >=0.12.5, webkit-javascriptcore -any,
-                   webkit-sodium -any, gloss -any, array -any
+                   text -any, webkit-sodium -any, gloss -any, array -any,
+                   jmacro -any
     exposed-modules: Demo.DOM Demo.JavaScriptFFI Demo.LazyLoading
                      Demo.Threading
     exposed: True
@@ -24,11 +24,11 @@ library
 executable mloc-js
     build-depends: base -any, blaze-html -any, blaze-markup -any,
                    containers >=0.5.0.0 && <0.6, filepath -any, ghcjs-dom -any,
-                   gtk -any, hamlet -any, hscolour >=1.20.3 && <1.21, jmacro -any,
+                   hamlet -any, hscolour >=1.20.3 && <1.21,
                    jsc >=0.1.0.0 && <0.2, lens >=3.8.5 && <3.11, mtl -any,
                    random >=1.0.1.1 && <1.1, sodium -any, template-haskell -any,
-                   text -any, webkit >=0.12.5, webkit-javascriptcore -any,
-                   webkit-sodium -any, gloss -any, array -any
+                   text -any, webkit-sodium -any, gloss -any, array -any,
+                   jmacro -any
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src

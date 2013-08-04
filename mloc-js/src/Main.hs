@@ -18,29 +18,27 @@ module Main (
 
 import Prelude hiding((!!))
 import Control.Applicative ((<$>))
-import Graphics.UI.Gtk.WebKit.GHCJS (runWebGUI)
-import Graphics.UI.Gtk (postGUISync, postGUIAsync)
-import Graphics.UI.Gtk.WebKit.WebView
-       (webViewGetMainFrame, webViewGetDomDocument)
-import Graphics.UI.Gtk.WebKit.DOM.Document
+import GHCJS.DOM (runWebGUI)
+-- import Graphics.UI.Gtk (postGUISync, postGUIAsync)
+import GHCJS.DOM
+       (webViewGetDomDocument)
+import GHCJS.DOM.Document
        (documentGetElementById, documentCreateElement, documentGetBody)
-import Graphics.UI.Gtk.WebKit.Types
+import GHCJS.DOM.Types
        (Document(..), HTMLDivElement(..), WebView(..), castToHTMLElement,
         castToHTMLInputElement, castToHTMLDivElement)
-import Graphics.UI.Gtk.WebKit.DOM.HTMLElement
+import GHCJS.DOM.HTMLElement
        (htmlElementSetInnerText, htmlElementSetInnerHTML)
 import Data.Text.Lazy (Text, unpack)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Hamlet (Html, shamlet)
-import Graphics.UI.Gtk.WebKit.DOM.Element
+import GHCJS.DOM.Element
        (elementOnclick, elementFocus, elementOnkeypress, elementOnkeyup,
         elementOnkeydown, elementGetStyle)
-import Graphics.UI.Gtk.WebKit.DOM.CSSStyleDeclaration
+import GHCJS.DOM.CSSStyleDeclaration
        (cssStyleDeclarationSetProperty)
-import Graphics.UI.Gtk.WebKit.DOM.Node
+import GHCJS.DOM.Node
        (nodeAppendChild, nodeInsertBefore)
-import Graphics.UI.Gtk.WebKit.JavaScriptCore.WebFrame
-       (webFrameGetGlobalContext)
 import Control.Monad.Reader (ReaderT(..))
 import Language.Javascript.JSC
        (call, JSC, JSNull(..), evalJM, val, array, eval, new, fun,
@@ -50,13 +48,13 @@ import Control.Monad.Trans (liftIO)
 import Control.Concurrent
        (putMVar, tryTakeMVar, takeMVar, newEmptyMVar, threadDelay, forkIO)
 import Control.Monad (when, forever)
-import Graphics.UI.Gtk.WebKit.DOM.HTMLInputElement
+import GHCJS.DOM.HTMLInputElement
        (htmlInputElementGetValue)
 import System.IO (hPutStrLn, stdout, hFlush, stderr)
 import Language.Javascript.JSC.Value (JSValueRef, JSValue(..))
 import qualified Data.Text as T (pack)
 import Language.Javascript.JMacro (jLam, ToJExpr(..), JStat(..))
-import Graphics.UI.Gtk.WebKit.DOM.EventM (mouseShiftKey)
+import GHCJS.DOM.EventM (mouseShiftKey)
 import Engine (engine)
 import Freecell (mkFreecell)
 import Language.Haskell.TH (pprint, runQ)
@@ -108,7 +106,7 @@ main :: IO ()
 main = do
   -- Running a GUI creates a WebKitGtk window in native code,
   -- but just returns the browser window when compiled to JavaScript
-  runWebGUI $ \ webView -> postGUIAsync $ do
+  runWebGUI $ \ webView -> do
     -- WebKitGtk provides the normal W3C DOM functions
     Just doc <- webViewGetDomDocument webView
     Just body <- documentGetBody doc
