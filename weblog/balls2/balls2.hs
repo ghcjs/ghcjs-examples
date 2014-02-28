@@ -11,7 +11,7 @@ import           System.Random
 
 import           FRP.Sodium
 
-import           JavaScript.JQuery hiding (Event)
+import           JavaScript.JQuery hiding (Event, animate)
 import           GHCJS.Types
 import           GHCJS.Foreign
 
