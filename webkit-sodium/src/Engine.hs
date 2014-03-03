@@ -17,7 +17,7 @@ import Control.Arrow
 import Control.Monad.Trans ( liftIO )
 import GHCJS.DOM.Element
 import GHCJS.DOM.EventM
-import GHCJS.DOM.MouseEvent
+import GHCJS.DOM.MouseEvent hiding (MouseEvent)
 import GHCJS.DOM.Node
 import Control.Monad
 import Control.Monad.State.Strict
