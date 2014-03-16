@@ -27,10 +27,10 @@ import Data.Maybe
 import FRP.Sodium
 import Game
 import Control.Monad.Reader (ReaderT(..))
-#ifdef MIN_VERSION_jsc
-import Language.Javascript.JSC
+#ifdef MIN_VERSION_jsaddle
+import Language.Javascript.JSaddle
         (js2, js1, js0, js, jsg, (!!), (#), (<#), fun,
-         deRefVal, JSValue(..), runJSC)
+         deRefVal, JSValue(..), runJSaddle)
 import Control.Lens ((^.))
 #endif
 
@@ -137,8 +137,8 @@ engine webView containerId game = do
         liftIO . sanitize Up . sync . pushMouse . MouseUp . toWorld $ xy
 
     (cx, cy) <- elementPageXY doc container
-#ifdef MIN_VERSION_jsc
-    runJSC webView $ do
+#ifdef MIN_VERSION_jsaddle
+    runJSaddle webView $ do
         document <- jsg "document"
         let getElementById = js1 "getElementById"
             preventDefault = js0 "preventDefault"

@@ -1,9 +1,3 @@
-darcs:http://code.haskell.org/gtk2hs
-darcs:http://code.haskell.org/webkit
-https://github.com/ghcjs/webkit-javascriptcore.git
-https://github.com/ghcjs/ghcjs-dom.git
-https://github.com/ghcjs/jsc.git
-https://github.com/ghcjs/sodium.git
 ./ghcjs-hello
 ./multiple-pages
 ./webkit-sodium

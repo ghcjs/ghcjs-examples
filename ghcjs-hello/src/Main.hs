@@ -33,10 +33,10 @@ import GHCJS.DOM.Node
        (nodeInsertBefore, nodeAppendChild)
 import GHCJS.DOM.CSSStyleDeclaration
        (cssStyleDeclarationSetProperty)
-import Language.Javascript.JSC
+import Language.Javascript.JSaddle
        (strToText, valToStr, JSNull(..), deRefVal, valToObject, js, JSF(..), js1, js4, jsg,
-        valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new, runJSC_,
-        valToText, MakeValueRef(..), JSValue(..), evalJME, evalJM, call, JSC(..), JSValueRef)
+        valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new, runJSaddle_,
+        valToText, MakeValueRef(..), JSValue(..), call, JSM(..), JSValueRef)
 import Control.Monad.Reader (ReaderT(..))
 import qualified Data.Text as T (unpack, pack)
 import FRP.Sodium
@@ -101,7 +101,7 @@ main = do
 
     -- Run JavaScript using postGUISync to make sure it runs on the Gtk thread.
     -- This should avoid threading issues when using WebKitGTK+.
-    let runjs = postGUIAsync . runJSC_ webView
+    let runjs = postGUIAsync . runJSaddle_ webView
 
     runjs $ do
         -- Declare the javascript property getters we will be using

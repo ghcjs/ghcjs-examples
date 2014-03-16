@@ -5,5 +5,4 @@ cabal-dev
 *.chi
 *.chs.h
 /.shelly/
-/vendor/
 /gtk2hs/

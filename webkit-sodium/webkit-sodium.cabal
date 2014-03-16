@@ -8,7 +8,7 @@ description:
 library
     build-depends: QuickCheck -any, base -any, mtl -any,
                    sodium -any, array -any, filepath -any, random -any, ghcjs-dom -any,
-                   jsc -any, lens -any
+                   jsaddle -any, lens -any
 
     exposed-modules: Engine, Freecell, Game
     hs-source-dirs: src
@@ -16,7 +16,7 @@ library
  executable freecell
     build-depends: QuickCheck -any, base -any, mtl -any,
                    sodium -any, array -any, filepath -any, random -any, ghcjs-dom -any,
-                   jsc -any, lens -any
+                   jsaddle -any, lens -any
 
     main-is: Main.hs
     buildable: True
