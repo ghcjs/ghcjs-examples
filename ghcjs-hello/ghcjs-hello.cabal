@@ -3,8 +3,10 @@ version: 0.0.1
 cabal-version: >=1.8
 build-type: Simple
 license: BSD3
-license-file: ""
-data-dir: ""
+
+flag jmacro
+    description: Include some JMacro support
+    default: True
 
 executable ghcjs-hello
     build-depends: lens -any,
@@ -12,7 +14,11 @@ executable ghcjs-hello
                    template-haskell -any, base -any, blaze-html -any, filepath -any,
                    hamlet -any, text -any, blaze-markup -any,
                    ghcjs-dom -any, mtl -any, sodium -any, webkit-sodium -any,
-                   jsc >=0.1.0.0 && <0.2, jmacro -any
+                   jsaddle >=0.1.0.0 && <0.2
+
+    if flag(jmacro)
+        build-depends: jmacro >=0.6.3 && <0.8
+
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src

@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction, Rank2Types #-}
+{-# LANGUAGE CPP, TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction, Rank2Types #-}
 module Main (
     main, lazyLoad_freecell
 ) where
@@ -42,8 +42,12 @@ import qualified Data.Text as T (unpack, pack)
 import FRP.Sodium
 import Engine
 import Freecell -- What could this be for ? :-)
+#ifdef jmacro_MIN_VERSION
+import Language.Javascript.JSC
+       (evalJME, evalJM)
 import Language.Javascript.JMacro
        (jmacroE, jLam, jmacro, renderJs, ToJExpr(..), JStat(..))
+#endif
 import Language.Haskell.TH (Exp(..), Lit(..))
 import System.IO.Unsafe (unsafePerformIO)
 import Control.Lens ((^.))
@@ -219,12 +223,14 @@ main = do
             callBack # (JSNull, (), True, (3.14 :: Double), "5-tuple")
             -- or
             eval "callbackToHaskell(null, undefined, true, 3.14, \"Eval\")"
+#ifdef jmacro_MIN_VERSION
             -- or
             $([evalJM|callbackToHaskell(null, undefined, true, 3.14, "Evaled JMacro")|])
             -- or
             jmfunc <- $([evalJME| \ a b c d e -> callbackToHaskell(a, b, c, d, e) |])
             let callJM :: (JSNull, (), Bool, Double, String) -> JSC JSValueRef = call jmfunc jmfunc
             callJM (JSNull, (), True, 3.14, "Via JMacro Evaled Function")
+#endif
 
             -- var a = []; for(var i = 0; i != 10; ++i) a[i] = i; console.log(a[5]);
             array ([0..10]::[Double]) !! 5 >>= log
