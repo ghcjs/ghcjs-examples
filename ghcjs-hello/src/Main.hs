@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction, Rank2Types #-}
+{-# LANGUAGE CPP, TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction, Rank2Types, DeriveDataTypeable #-}
 module Main (
     main, lazyLoad_freecell
 ) where
@@ -25,7 +25,7 @@ import GHCJS.DOM.Element
 import GHCJS.DOM.HTMLInputElement
        (htmlInputElementGetValue)
 import Control.Concurrent
-       (tryTakeMVar, takeMVar, threadDelay, putMVar, forkIO, newEmptyMVar)
+       (tryTakeMVar, takeMVar, threadDelay, putMVar, forkIO, newEmptyMVar, forkIOWithUnmask)
 import Control.Monad (when, forever)
 import GHCJS.DOM.EventM
        (mouseShiftKey, mouseCtrlKey)
@@ -51,6 +51,12 @@ import Language.Javascript.JMacro
 import Language.Haskell.TH (Exp(..), Lit(..))
 import System.IO.Unsafe (unsafePerformIO)
 import Control.Lens ((^.))
+import Control.Exception (throwTo, catch, SomeException, Exception)
+import Data.Typeable (Typeable)
+
+data NewValueException = NewValueException deriving (Show, Typeable)
+
+instance Exception NewValueException
 
 main = do
   -- Running a GUI creates a WebKitGtk window in native code,
@@ -133,15 +139,22 @@ main = do
     -- We don't want to work on more than on prime number test at a time.
     -- So we will have a single worker thread and a queue with just one value.
     next <- newEmptyMVar
-    forkIO . forever $ do
-      n <- takeMVar next
-      postGUISync $ do
-          htmlElementSetInnerHTML prime . unpack $ validatePrime n
+    ready <- newEmptyMVar
+    worker <- forkIOWithUnmask $ \unmask -> forever $ (do
+              putMVar ready ()
+              n <- takeMVar next
+              postGUISync $ do
+                  htmlElementSetInnerHTML prime $ "Thinking about " ++ n
+              unmask . postGUISync $ do
+                  htmlElementSetInnerHTML prime . unpack $ validatePrime n)
+         `catch` \ (e :: SomeException) -> print e
 
     -- Something to set the next work item
     let setNext = do
                     n <- htmlInputElementGetValue numInput
                     tryTakeMVar next -- Discard existing next item
+                    throwTo worker NewValueException
+                    takeMVar ready
                     putMVar next n
 
     -- Lets wire up some events

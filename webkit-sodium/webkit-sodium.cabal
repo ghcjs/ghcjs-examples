@@ -13,7 +13,7 @@ library
     exposed-modules: Engine, Freecell, Game
     hs-source-dirs: src
 
- executable freecell
+executable freecell
     build-depends: QuickCheck -any, base -any, mtl -any,
                    sodium -any, array -any, filepath -any, random -any, ghcjs-dom -any,
                    jsaddle -any, lens -any

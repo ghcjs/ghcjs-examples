@@ -13,7 +13,7 @@ executable ghcjs-hello
                    containers -any, random -any,
                    template-haskell -any, base -any, blaze-html -any, filepath -any,
                    hamlet -any, text -any, blaze-markup -any,
-                   ghcjs-dom -any, mtl -any, sodium -any, webkit-sodium -any,
+                   ghcjs-dom >=0.0.7 && <0.1, mtl -any, sodium -any, webkit-sodium -any,
                    jsaddle >=0.1.0.0 && <0.2
 
     if flag(jmacro)
