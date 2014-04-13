@@ -12,7 +12,7 @@ executable ghcjs-hello
     build-depends: lens -any,
                    containers -any, random -any,
                    template-haskell -any, base -any, blaze-html -any, filepath -any,
-                   hamlet -any, text -any, blaze-markup -any,
+                   hamlet -any, text -any, blaze-markup -any, shakespeare -any,
                    ghcjs-dom >=0.0.7 && <0.1, mtl -any, sodium -any, webkit-sodium -any,
                    jsaddle >=0.1.0.0 && <0.2
 
