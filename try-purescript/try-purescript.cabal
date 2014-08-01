@@ -1,0 +1,34 @@
+name:                try-purescript
+version:             0.1.0.0
+synopsis:            Try PureScript!
+description:         GHCJS example project: Try PureScript in the browser
+license:             MIT
+license-file:        LICENSE
+author:              Luite Stegeman
+maintainer:          stegeman@gmail.com
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+extra-source-files: codemirror/lib/codemirror.css
+                    codemirror/lib/codemirror.js
+                    codemirror/theme/elegant.css
+                    codemirror/addon/edit/matchbrackets.js
+                    codemirror/mode/haskell/haskell.js
+                    codemirror/LICENSE
+                    data/index.html
+                    data/tryps.css
+                    data/run_button.png
+                    data/busy.gif
+                    prepare.sh
+                    README.markdown
+
+executable try-purescript
+  js-sources: jsbits/tryps.js
+  ghcjs-options: -O
+  cpp-options: -DGHCJS_BROWSER -DGHCJS_BUSY_YIELD=30
+  main-is:             Main.hs
+  build-depends:       base >=4.7 && <5,
+                       ghcjs-base,
+                       ghcjs-ffiqq,
+                       purescript >= 0.5.3 && < 0.6
+  default-language:    Haskell2010
