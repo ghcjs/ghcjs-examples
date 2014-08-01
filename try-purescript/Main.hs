@@ -45,11 +45,9 @@ main = do
                   [js| tryps.getPrelude() |]
   mv <- newEmptyMVar
   worker <- mask_ $ forkIOWithUnmask (compileWorker prel mv)
-  return ()
   forever $ do
     [jsi_| tryps.waitForChange($c); |]
     abortCompilation worker
     threadDelay 500000
     putMVar mv =<< [js| tryps.getEditorContents() |]
-
 
