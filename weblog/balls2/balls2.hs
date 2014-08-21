@@ -63,7 +63,7 @@ main = do
         t1 <- now
         sync (pushStepper $ t1-t0)
         writeIORef t t1
-  animate =<< syncCallback False False step
+  animate =<< syncCallback AlwaysRetain False step
 
 startPos :: Behaviour R2 -> IO R2
 startPos size = do
