@@ -1,0 +1,50 @@
+.Dn { display: none; }
+
+.Pos   { position: relative; }
+.Pos-A { position: absolute; }
+
+.Plate {
+  background-color: white;
+  border: 1px solid #aaa;
+}
+
+.trigger {
+  display: inline-block;
+  text-decoration: underline;
+  color: #555;
+  padding: 5px;
+}
+.trigger:hover {
+  cursor: pointer;
+  background-color: #CCC2B2;
+  color: #000;
+}
+.trigger.hold {
+  background-color: #B2ACA1;
+  text-decoration: none;
+  color: #333;
+}
+
+#page {
+  width: 700px;
+  margin: 0 auto;
+}
+
+#popup {
+  left: 50px; right: 50px;
+  top: 170px; bottom: 50px;
+  padding: 10px;
+}
+
+  #popup .trigger  { font-size: 80%; }
+  #ppp-content     { margin: 25px; }
+  #ppp-close       { color: #E36B49; }
+  #ppp-close:hover { 
+    color: #964730;
+    background-color: transparent;
+  }
+
+BODY {
+  background-color: #F5FCF8;
+  font-family: sans-serif;
+}
