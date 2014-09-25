@@ -31,7 +31,7 @@ compileWorker prel mv unmask =
         case P.runIndentParser "<editor>" P.parseModules src of
           Left err -> setError (show err)
           Right [] -> setError "no input"
-          Right ms -> case P.compile compileOpts (ms ++ prel) of
+          Right ms -> case P.compile compileOpts (ms ++ prel) [] of
              Left err -> setError err
              Right (jsSrc, _, _) -> [js_| tryps.setResult(`jsSrc); |]
 
