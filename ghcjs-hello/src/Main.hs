@@ -42,17 +42,17 @@ import qualified Data.Text as T (unpack, pack)
 import FRP.Sodium
 import Engine
 import Freecell -- What could this be for ? :-)
-#ifdef jmacro_MIN_VERSION
-import Language.Javascript.JSC
-       (evalJME, evalJM)
+#ifdef MIN_VERSION_jmacro
 import Language.Javascript.JMacro
        (jmacroE, jLam, jmacro, renderJs, ToJExpr(..), JStat(..))
+import Language.Haskell.TH
+       (stringL, litE)
 #endif
-import Language.Haskell.TH (Exp(..), Lit(..))
 import System.IO.Unsafe (unsafePerformIO)
 import Control.Lens ((^.))
 import Control.Exception (throwTo, catch, SomeException, Exception)
 import Data.Typeable (Typeable)
+import Control.DeepSeq (deepseq)
 
 data NewValueException = NewValueException deriving (Show, Typeable)
 
@@ -109,56 +109,53 @@ main = do
     -- This should avoid threading issues when using WebKitGTK+.
     let runjs = postGUIAsync . runJSaddle_ webView
 
-    runjs $ do
-        -- Declare the javascript property getters we will be using
-        document <- jsg "document"
-        let getElementById = js1 "getElementById"
-            getContext     = js1 "getContext"
-            fillStyle      = js "fillStyle"
-            fillRect :: Double -> Double -> Double -> Double -> JSF
-            fillRect       = js4 "fillRect"
+    -- Declare the javascript property getters we will be using
+    let getElementById = js1 "getElementById"
+        getContext     = js1 "getContext"
+        fillStyle      = js "fillStyle"
+        fillRect :: Double -> Double -> Double -> Double -> JSF
+        fillRect       = js4 "fillRect"
+        get2dContext = do
+            document <- jsg "document"
+            -- var canvas = document.getElementById("canvas")
+            -- return canvas.getContext("2d")
+            canvas <- document ^. getElementById "canvas"
+            canvas ^. getContext "2d"
 
-        -- var canvas = document.getElementById("canvas")
-        canvas <- document ^. getElementById "canvas"
-
-        -- var ctx = canvas.getContext("2d")
-        ctx <- canvas ^. getContext "2d"
-
-        liftIO . forkIO . forever $ do
-            runjs $ do
-                -- ctx.fillStyle = "#00FF00"
-                -- ctx.fillRect( 0, 0, 150, 75 )
-                ctx ^. fillStyle <# "#00FF00"
-                ctx ^. fillRect 0 0 10 10
-            liftIO $ threadDelay 500000
-            runjs $ do
-                ctx ^. fillStyle <# "#FF0000"
-                ctx ^. fillRect 0 0 10 10
-            liftIO $ threadDelay 500000
+    liftIO . forkIO . forever $ do
+        runjs $ do
+            ctx <- get2dContext
+            -- ctx.fillStyle = "#00FF00"
+            -- ctx.fillRect( 0, 0, 150, 75 )
+            ctx ^. fillStyle <# "#00FF00"
+            ctx ^. fillRect 0 0 10 10
+        liftIO $ threadDelay 500000
+        runjs $ do
+            ctx <- get2dContext
+            ctx ^. fillStyle <# "#FF0000"
+            ctx ^. fillRect 0 0 10 10
+        liftIO $ threadDelay 500000
 
     -- We don't want to work on more than on prime number test at a time.
     -- So we will have a single worker thread and a queue with just one value.
     next <- newEmptyMVar
     ready <- newEmptyMVar
-    worker <- forkIOWithUnmask $ \unmask -> forever $ (do
-              putMVar ready ()
+    worker <- forkIOWithUnmask $ \unmask -> forever $ unmask $ (do
               n <- takeMVar next
-              postGUISync $ do
+              postGUIAsync $ do
                   htmlElementSetInnerHTML prime $ "Thinking about " ++ n
-              unmask . postGUISync $ do
-                  htmlElementSetInnerHTML prime . unpack $ validatePrime n)
-         `catch` \ (e :: SomeException) -> print e
+              let message = validatePrime n
+              deepseq message $ postGUIAsync $ do
+                  htmlElementSetInnerHTML prime . unpack $ message)
+         `catch` \ (e :: NewValueException) -> return ()
 
     -- Something to set the next work item
     let setNext = do
                     n <- htmlInputElementGetValue numInput
-                    tryTakeMVar next -- Discard existing next item
                     throwTo worker NewValueException
-                    takeMVar ready
                     putMVar next n
 
     -- Lets wire up some events
-    elementOnkeydown  numInput (liftIO setNext)
     elementOnkeyup    numInput (liftIO setNext)
     elementOnkeypress numInput (liftIO setNext)
 
@@ -219,11 +216,11 @@ main = do
             -- eval("logText('Hello'); 1+2")
             eval "logText('Hello'); 1+2" >>= log
 
-            -- logText(["Test", navigator.appVersion.length].length)
+            -- logText(["Test", navigator.appVersion].length)
             navigator  <- jsg "navigator"
             let appVersion = js "appVersion"
                 jsLength   = js "length"
-            jsLogText # array ("Test", navigator ^. appVersion . jsLength) ^. jsLength
+            jsLogText # array ("Test", navigator ^. appVersion) ^. jsLength
 
             -- callbackToHaskell = function () { console.log(arguments); }
             callBack <- jsg "callbackToHaskell" <# fun (\f this -> logList)
@@ -236,12 +233,12 @@ main = do
             callBack # (JSNull, (), True, (3.14 :: Double), "5-tuple")
             -- or
             eval "callbackToHaskell(null, undefined, true, 3.14, \"Eval\")"
-#ifdef jmacro_MIN_VERSION
+#ifdef MIN_VERSION_jmacro
             -- or
-            $([evalJM|callbackToHaskell(null, undefined, true, 3.14, "Evaled JMacro")|])
+            eval $(litE . stringL . show $ renderJs [jmacro|callbackToHaskell(null, undefined, true, 3.14, "Evaled JMacro")|])
             -- or
-            jmfunc <- $([evalJME| \ a b c d e -> callbackToHaskell(a, b, c, d, e) |])
-            let callJM :: (JSNull, (), Bool, Double, String) -> JSC JSValueRef = call jmfunc jmfunc
+            jmfunc <- eval $(litE . stringL . show $ renderJs [jmacroE| \ a b c d e -> callbackToHaskell(a, b, c, d, e) |])
+            let callJM :: (JSNull, (), Bool, Double, String) -> JSM JSValueRef = call jmfunc jmfunc
             callJM (JSNull, (), True, 3.14, "Via JMacro Evaled Function")
 #endif
 

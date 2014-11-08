@@ -5,16 +5,16 @@ build-type: Simple
 license: BSD3
 
 flag jmacro
-    description: Include some JMacro support
-    default: True
+    Description:  Include some JMacro support
+    Default: False
 
 executable ghcjs-hello
-    build-depends: lens -any,
+    build-depends: deepseq >=1.3.0.2 && <1.4, lens -any,
                    containers -any, random -any,
                    template-haskell -any, base -any, blaze-html -any, filepath -any,
                    hamlet -any, text -any, blaze-markup -any, shakespeare -any,
-                   ghcjs-dom >=0.0.7 && <0.1, mtl -any, sodium -any, webkit-sodium -any,
-                   jsaddle >=0.1.0.0 && <0.2
+                   ghcjs-dom >=0.1.1.0 && <0.2, mtl -any, sodium -any, webkit-sodium -any,
+                   jsaddle >=0.2.0.0 && <0.3
 
     if flag(jmacro)
         build-depends: jmacro >=0.6.3 && <0.8
@@ -22,4 +22,5 @@ executable ghcjs-hello
     main-is: Main.hs
     buildable: True
     hs-source-dirs: src
+    ghc-options: -threaded -with-rtsopts=-N3
 
