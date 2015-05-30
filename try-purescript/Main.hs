@@ -9,6 +9,7 @@ import           Control.Applicative
 import           Control.Concurrent
 import           Control.Exception
 import           Control.Monad
+import           Control.Monad.Reader
 
 import qualified Language.PureScript as P
 
@@ -22,16 +23,16 @@ compileWorker prel mv unmask =
   forever $ unmask doCompile `catch` \(e::AsyncException) -> return ()
     where
       compileOpts =
-        P.defaultOptions { P.optionsBrowserNamespace = Just "PS"
-                         , P.optionsVerboseErrors = True
-                         }
+        P.defaultCompileOptions { P.optionsAdditional    = P.CompileOptions "PS" [] []
+                                , P.optionsVerboseErrors = True
+                                }
       doCompile = do
         src  <- takeMVar mv
         [js_| tryps.setBusy(); |]
-        case P.runIndentParser "<editor>" P.parseModules src of
+        case P.parseModulesFromFiles (const "<editor>") [((), src)] of
           Left err -> setError (show err)
           Right [] -> setError "no input"
-          Right ms -> case P.compile compileOpts (ms ++ prel) [] of
+          Right ms -> case P.compile (map snd ms ++ prel) [] `runReaderT` compileOpts of
              Left err -> setError err
              Right (jsSrc, _, _) -> [js_| tryps.setResult(`jsSrc); |]
 
@@ -41,8 +42,9 @@ abortCompilation worker = killThread worker
 main :: IO ()
 main = do
   [js_| trypsInit(); |]
-  Right prel <- P.runIndentParser "<built-in>" P.parseModules <$>
-                  [js| tryps.getPrelude() |]
+  prelSrc <- [js| tryps.getPrelude() |]
+  let prel = either (error . show) (map snd) $
+             P.parseModulesFromFiles (const "<built-in>") [((), prelSrc)]
   mv <- newEmptyMVar
   worker <- mask_ $ forkIOWithUnmask (compileWorker prel mv)
   forever $ do
