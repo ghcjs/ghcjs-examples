@@ -7,6 +7,7 @@ function TryPs(editor, res, res_text, run_btn, run_output, run_templ, prelude) {
     this.run_output = document.getElementById(run_output);
     this.code = null;
     this.prelude = document.getElementById(prelude).text;
+    this.compiledPrelude = '';
     this.run_template = document.getElementById(run_templ).text.replace(/<!--([^]*)-->/gm, "$1");
     this.editor = CodeMirror['fromTextArea'](
         document.getElementById(editor), { 'lineNumbers': true
@@ -30,7 +31,7 @@ function TryPs(editor, res, res_text, run_btn, run_output, run_templ, prelude) {
         }
         doc.open();
         doc.write(that.run_template);
-        addScript(that.code);
+        addScript(that.compiledPrelude + that.code);
         addScript("runPS();");
     });
 }
@@ -53,15 +54,19 @@ TryPs.prototype.setError = function(err) {
     this.result_text.textContent = err;
 }
 
+TryPs.prototype.setCompiledPrelude = function(x) {
+    this.compiledPrelude = x;
+}
+
 TryPs.prototype.setResult = function(res) {
     this.result.className = "runnable";
     this.result_text.textContent = res;
     this.code = res;
 }
 
-TryPs.prototype.setBusy = function() {
+TryPs.prototype.setBusy = function(msg) {
     this.result.className = "busy";
-    this.result_text.textContent = "";
+    this.result_text.textContent = msg;
 }
 
 var tryps;

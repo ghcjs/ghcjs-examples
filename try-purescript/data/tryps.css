@@ -173,7 +173,7 @@ body {
 #result_outer.busy #result {
     background-repeat: no-repeat;
     background-image: url(busy.gif);
-    background-position: 20px 20px;
+    background-position: 5px 40px;
 }
 
 #footer {
