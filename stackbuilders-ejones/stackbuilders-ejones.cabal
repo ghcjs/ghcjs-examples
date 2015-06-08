@@ -1,0 +1,17 @@
+name:                stackbuilders-ejones
+version:             0.0.1
+cabal-version:       >=1.21
+build-type:          Simple
+
+executable stackbuilders-ejones
+  main-is:             Main.hs
+  default-extensions:  OverloadedStrings
+  build-depends:       base -any
+                     , data-default -any
+                     , text -any
+                     , bytestring -any
+                     , ghcjs-jquery -any
+                     , sodium -any
+                     , blaze-html -any
+                     , clay -any
+  default-language:    Haskell2010

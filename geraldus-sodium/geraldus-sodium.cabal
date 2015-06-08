@@ -1,0 +1,21 @@
+name:                geraldus-sodium
+version:             0.0.1
+cabal-version:       >=1.21
+build-type:          Simple
+extra-source-files: index.html style.css
+
+executable geraldus-sodium
+  main-is:             Main.hs
+
+  default-extensions:  OverloadedStrings, ForeignFunctionInterface, EmptyDataDecls, OverloadedStrings, DeriveGeneric, DeriveDataTypeable, JavaScriptFFI, CPP
+
+  build-depends:       base >=4.7 && <4.8
+                     , data-default ==0.5.3
+                     , ghcjs-base -any
+                     , ghcjs-dom -any
+                     , ghcjs-jquery -any
+                     , sodium ==0.10.0.2
+                     , text -any
+                     , bytestring -any
+
+  default-language:    Haskell2010
