@@ -94,7 +94,7 @@ elementPageXY doc elt = do
                 ox <- elementGetOffsetLeft elt
                 oy <- elementGetOffsetTop elt
                 Just parent <- elementGetOffsetParent elt
-                traverse body parent (x + ox, y + oy)
+                traverse body parent (x + round ox, y + round oy)
 
 -- The game logic expects alternating down-up-down-up, but the browser can produce
 -- bad sequences like down-up-down-down-up. So we sanitize the input.
