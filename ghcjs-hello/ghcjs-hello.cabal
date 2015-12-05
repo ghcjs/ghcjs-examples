@@ -9,12 +9,23 @@ flag jmacro
     Default: False
 
 executable ghcjs-hello
-    build-depends: deepseq >=1.3.0.2 && <1.4, lens -any,
-                   containers -any, random -any,
-                   template-haskell -any, base -any, blaze-html -any, filepath -any,
-                   hamlet -any, text -any, blaze-markup -any, shakespeare -any,
-                   ghcjs-dom >=0.1.1.0 && <0.2, mtl -any, sodium -any, webkit-sodium -any,
-                   jsaddle >=0.2.0.0 && <0.3
+    build-depends: base -any
+                 , blaze-html -any
+                 , blaze-markup -any
+                 , containers -any
+                 , deepseq >=1.3.0.2 && <1.5
+                 , filepath -any
+                 , ghcjs-dom >=0.1.1.0 && <0.3
+                 , hamlet -any
+                 , jsaddle >=0.3.0.0 && <0.4
+                 , lens -any
+                 , mtl -any
+                 , random -any
+                 , shakespeare -any
+                 , sodium -any
+                 , template-haskell -any
+                 , text -any
+                 , webkit-sodium -any
 
     if flag(jmacro)
         build-depends: jmacro >=0.6.3 && <0.8

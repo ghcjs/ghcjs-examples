@@ -6,3 +6,4 @@ cabal-dev
 *.chs.h
 /.shelly/
 /gtk2hs/
+.stack-work
