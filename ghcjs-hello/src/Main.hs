@@ -1,58 +1,69 @@
-{-# LANGUAGE CPP, TemplateHaskell, QuasiQuotes, ScopedTypeVariables, NoMonomorphismRestriction, Rank2Types, DeriveDataTypeable #-}
+{-# LANGUAGE CPP                       #-}
+{-# LANGUAGE DeriveDataTypeable        #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE QuasiQuotes               #-}
+{-# LANGUAGE Rank2Types                #-}
+{-# LANGUAGE ScopedTypeVariables       #-}
+{-# LANGUAGE TemplateHaskell           #-}
 module Main (
     main, lazyLoad_freecell
 ) where
 
-import Prelude hiding ((!!))
-import Control.Monad.Trans ( liftIO )
-import System.IO (stderr, hPutStrLn, stdout, hFlush)
-import GHCJS.DOM (runWebGUI, postGUISync, postGUIAsync, webViewGetDomDocument)
-import GHCJS.DOM.Document
-       (documentCreateElement, documentGetElementById, documentGetBody)
-import GHCJS.DOM.HTMLElement
-       (htmlElementSetInnerText, htmlElementSetInnerHTML)
-import Data.Text.Lazy (Text, unpack)
-import Text.Blaze.Html.Renderer.Text (renderHtml)
-import Text.Hamlet (shamlet)
-import Text.Blaze.Html (Html)
-import GHCJS.DOM.Types
-       (Node(..), castToHTMLElement, castToHTMLDivElement,
-        castToHTMLInputElement)
-import Control.Applicative ((<$>))
-import GHCJS.DOM.Element
-       (elementGetStyle, elementSetAttribute, elementOnclick,
-        elementOnkeypress, elementOnkeyup, elementOnkeydown, elementFocus)
-import GHCJS.DOM.HTMLInputElement
-       (htmlInputElementGetValue)
-import Control.Concurrent
-       (tryTakeMVar, takeMVar, threadDelay, putMVar, forkIO, newEmptyMVar, forkIOWithUnmask)
-import Control.Monad (when, forever)
-import GHCJS.DOM.EventM
-       (mouseShiftKey, mouseCtrlKey)
-import GHCJS.DOM.Node
-       (nodeInsertBefore, nodeAppendChild)
-import GHCJS.DOM.CSSStyleDeclaration
-       (cssStyleDeclarationSetProperty)
-import Language.Javascript.JSaddle
-       (strToText, valToStr, JSNull(..), deRefVal, valToObject, js, JSF(..), js1, js4, jsg,
-        valToNumber, (!), (!!), (#), (<#), global, eval, fun, val, array, new, runJSaddle_,
-        valToText, MakeValueRef(..), JSValue(..), call, JSM(..), JSValueRef)
-import Control.Monad.Reader (ReaderT(..))
-import qualified Data.Text as T (unpack, pack)
-import FRP.Sodium
-import Engine
-import Freecell -- What could this be for ? :-)
+import           Control.Applicative           ((<$>))
+import           Control.Concurrent            (forkIO, forkIOWithUnmask,
+                                                newEmptyMVar, putMVar, takeMVar,
+                                                threadDelay, tryTakeMVar, MVar)
+import           Control.DeepSeq               (deepseq)
+import           Control.Exception             (Exception, SomeException, catch,
+                                                throwTo)
+import           Control.Lens                  ((^.))
+import           Control.Monad                 (forever, when)
+import           Control.Monad.Reader          (ReaderT (..))
+import           Control.Monad.Trans           (liftIO)
+import           Data.Maybe                    (fromMaybe)
+import qualified Data.Text                     as T (pack, unpack)
+import           Data.Text.Lazy                (Text, unpack)
+import           Data.Typeable                 (Typeable)
+import           Engine
+import           Freecell
+import           FRP.Sodium
+import           GHCJS.DOM                     (postGUIAsync, postGUISync,
+                                                runWebGUI,
+                                                webViewGetDomDocument)
+import           GHCJS.DOM.CSSStyleDeclaration (setProperty)
+import           GHCJS.DOM.Document            (createElement, getBody,
+                                                getElementById)
+import           GHCJS.DOM.Element             (click, focus, getStyle, keyDown,
+                                                keyPress, keyUp, setAttribute,
+                                                setInnerHTML)
+import           GHCJS.DOM.EventM
+import           GHCJS.DOM.EventM              (mouseCtrlKey, mouseShiftKey)
+import           GHCJS.DOM.HTMLElement         (setInnerText)
+import           GHCJS.DOM.HTMLInputElement    (getValue)
+import           GHCJS.DOM.Node                (appendChild, insertBefore)
+import           GHCJS.DOM.Types               (Node (..), castToHTMLDivElement,
+                                                castToHTMLElement,
+                                                castToHTMLInputElement)
+import           Language.Javascript.JSaddle   (JSF (..), JSM (..), JSNull (..),
+                                                JSValue (..), array, call,
+                                                deRefVal, eval, fun, global, js,
+                                                js1, js4, jsg, new, runJSaddle_,
+                                                strToText, val, valToNumber,
+                                                valToObject, valToStr,
+                                                valToText, (!), (!!), ( # ),
+                                                (<#))
+import           Prelude                       hiding ((!!))
+import           System.IO                     (hFlush, hPutStrLn, stderr,
+                                                stdout)
+import           System.IO.Unsafe              (unsafePerformIO)
+import           Text.Blaze.Html               (Html)
+import           Text.Blaze.Html.Renderer.Text (renderHtml)
+import           Text.Hamlet                   (shamlet)
 #ifdef MIN_VERSION_jmacro
-import Language.Javascript.JMacro
-       (jmacroE, jLam, jmacro, renderJs, ToJExpr(..), JStat(..))
-import Language.Haskell.TH
-       (stringL, litE)
+import           Language.Haskell.TH           (litE, stringL)
+import           Language.Javascript.JMacro    (JStat (..), ToJExpr (..), jLam,
+                                                jmacro, jmacroE, renderJs)
 #endif
-import System.IO.Unsafe (unsafePerformIO)
-import Control.Lens ((^.))
-import Control.Exception (throwTo, catch, SomeException, Exception)
-import Data.Typeable (Typeable)
-import Control.DeepSeq (deepseq)
 
 data NewValueException = NewValueException deriving (Show, Typeable)
 
@@ -64,11 +75,11 @@ main = do
   runWebGUI $ \ webView -> do
     -- WebKitGtk provides the normal W3C DOM functions
     Just doc <- webViewGetDomDocument webView
-    Just body <- documentGetBody doc
+    Just body <- getBody doc
 
     -- Lets use some Hamlet to replace HTerm with some HTML
-    Just div <- fmap castToHTMLDivElement <$> documentCreateElement doc "div"
-    htmlElementSetInnerHTML div . unpack $ renderHtml [shamlet|$newline always
+    Just div <- fmap castToHTMLDivElement <$> createElement doc (Just "div")
+    setInnerHTML div . Just . unpack $ renderHtml [shamlet|$newline always
         <h1 #heading>
             Hello and Welcome GHCJS
         <p>
@@ -87,21 +98,21 @@ main = do
     |]
     -- Now we need to add this div to the document body
     -- If we are in the browser then let's shrink the terminal window to make room
-    mbTerminal <- fmap castToHTMLDivElement <$> documentGetElementById doc "terminal"
+    mbTerminal <- fmap castToHTMLDivElement <$> getElementById doc "terminal"
     case mbTerminal of
       Just terminal -> do
-        Just style <- elementGetStyle terminal
-        cssStyleDeclarationSetProperty style "height" "200px" ""
-        cssStyleDeclarationSetProperty style "position" "absolute" ""
-        cssStyleDeclarationSetProperty style "bottom" "0" ""
-        nodeInsertBefore body (Just div) (Just terminal)
+        Just style <- getStyle terminal
+        setProperty style "height" (Just "200px") ""
+        setProperty style "position" (Just "absolute") ""
+        setProperty style "bottom" (Just "0") ""
+        insertBefore body (Just div) (Just terminal)
       _             -> do
-        nodeAppendChild body (Just div)
+        appendChild body (Just div)
 
     -- We can get the elements by ID
-    Just numInput <- fmap castToHTMLInputElement <$> documentGetElementById doc "num"
-    Just prime    <- fmap castToHTMLDivElement   <$> documentGetElementById doc "prime"
-    Just heading  <- fmap castToHTMLElement      <$> documentGetElementById doc "heading"
+    Just numInput <- fmap castToHTMLInputElement <$> getElementById doc "num"
+    Just prime    <- fmap castToHTMLDivElement   <$> getElementById doc "prime"
+    Just heading  <- fmap castToHTMLElement      <$> getElementById doc "heading"
 
     -- You can also use your favorite JavaScript libraries
 
@@ -112,7 +123,7 @@ main = do
     -- Declare the javascript property getters we will be using
     let getElementById = js1 "getElementById"
         getContext     = js1 "getContext"
-        fillStyle      = js "fillStyle"
+        -- fillStyle      = js "fillStyle"
         fillRect :: Double -> Double -> Double -> Double -> JSF
         fillRect       = js4 "fillRect"
         get2dContext = do
@@ -127,37 +138,40 @@ main = do
             ctx <- get2dContext
             -- ctx.fillStyle = "#00FF00"
             -- ctx.fillRect( 0, 0, 150, 75 )
-            ctx ^. fillStyle <# "#00FF00"
+
+            -- TODO: fix operator to be able to omit parentheses
+            (ctx <# "fillStyle") "#00FF00"
             ctx ^. fillRect 0 0 10 10
         liftIO $ threadDelay 500000
         runjs $ do
             ctx <- get2dContext
-            ctx ^. fillStyle <# "#FF0000"
+            -- TODO: fix operator to be able to omit parentheses
+            (ctx <# "fillStyle") "#FF0000"
             ctx ^. fillRect 0 0 10 10
         liftIO $ threadDelay 500000
 
     -- We don't want to work on more than on prime number test at a time.
     -- So we will have a single worker thread and a queue with just one value.
-    next <- newEmptyMVar
+    next <- newEmptyMVar :: IO (MVar (Maybe String))
     ready <- newEmptyMVar
     worker <- forkIOWithUnmask $ \unmask -> forever $ unmask $ (do
               n <- takeMVar next
               postGUIAsync $ do
-                  htmlElementSetInnerHTML prime $ "Thinking about " ++ n
+                  setInnerHTML prime $ Just ("Thinking about " ++ fromMaybe "nothing" n)
               let message = validatePrime n
               deepseq message $ postGUIAsync $ do
-                  htmlElementSetInnerHTML prime . unpack $ message)
+                  setInnerHTML prime . Just . unpack $ message)
          `catch` \ (e :: NewValueException) -> return ()
 
     -- Something to set the next work item
     let setNext = do
-                    n <- htmlInputElementGetValue numInput
+                    n <- getValue numInput
                     throwTo worker NewValueException
                     putMVar next n
 
     -- Lets wire up some events
-    elementOnkeyup    numInput (liftIO setNext)
-    elementOnkeypress numInput (liftIO setNext)
+    on numInput keyUp (liftIO setNext)
+    on numInput keyPress (liftIO setNext)
 
     putStrLn "This is stdout."
     hPutStrLn stderr "This is stderr."
@@ -167,7 +181,7 @@ main = do
     hFlush stdout
 
     -- We can use MVars and threads
-    nameMVar <- newEmptyMVar
+    nameMVar <- newEmptyMVar :: IO (MVar String)
 
     -- Wait for input on one thread
     forkIO $ do
@@ -183,24 +197,25 @@ main = do
     forkIO $ do
       name <- takeMVar nameMVar
       postGUISync $ do
-        htmlElementSetInnerText heading $ "Hello " ++ name ++ " and Welcome GHCJS"
+        setInnerText heading $ Just ("Hello " ++ name ++ " and Welcome GHCJS")
 
         -- Set the input focus to the prime number test
-        elementFocus numInput
+        focus numInput
 
         -- Now stdout is free let's try some more JavaScript stuff...
         runjs $ do
             -- Some helper functions to print JS values
-            let log       v = deRefVal      v >>= (liftIO . print)
-                logNumber v = valToNumber   v >>= (liftIO . print)
-                logText   v = valToText     v >>= (liftIO . print)
-                logList   v = mapM deRefVal v >>= (liftIO . print)
+            let log       v = deRefVal      v >>= (liftIO . putStrLn . showJSValue)
+                logNumber v = valToNumber   v >>= (liftIO . putStrLn . show)
+                logText   v = valToText     v >>= (liftIO . putStrLn . show)
+                logList   v = mapM deRefVal v >>= (liftIO . putStrLn . show . map showJSValue)
 
-            -- Add Java Script logText function that calls the haskell logText
-            jsLogText <- jsg "logText" <# fun (\_f _this [s] -> logText s)
+            -- Add JavaScript logText function that calls the haskell logText
+            (global <# "logText") (fun (\_f _this [s] -> logText s))
+            -- jsLogText <- jsg "logText"
 
             -- logText("Hello World")
-            jsLogText # ["Hello World"]
+            (#) global "logText" ["Hello World"]
 
             -- console.log(Math.sin(1))
             math <- jsg "Math"
@@ -220,17 +235,17 @@ main = do
             navigator  <- jsg "navigator"
             let appVersion = js "appVersion"
                 jsLength   = js "length"
-            jsLogText # array ("Test", navigator ^. appVersion) ^. jsLength
+            (#) global "logText" (array ("Test", navigator ^. appVersion) ^. jsLength)
 
             -- callbackToHaskell = function () { console.log(arguments); }
-            callBack <- jsg "callbackToHaskell" <# fun (\f this -> logList)
+            callBack <- (global <# "callbackToHaskell") (fun (\f this -> logList))
 
             -- callbackToHaskell(null, undefined, true, 3.14, "Hello")
-            callBack # [ValNull, ValUndefined, ValBool True, ValNumber 3.14, ValString $ T.pack "List of JSValues"]
+            (#) global "callBackToHaskell" [ValNull, ValUndefined, ValBool True, ValNumber 3.14, ValString $ T.pack "List of JSValues"]
             -- or
-            callBack # [val JSNull, val (), val True, val (3.14 :: Double), val "List of JSC JSValueRefs"]
+            (#) global "callBackToHaskell" [val JSNull, val (), val True, val (3.14 :: Double), val "List of JSC JSValueRefs"]
             -- or
-            callBack # (JSNull, (), True, (3.14 :: Double), "5-tuple")
+            (#) global "callBackToHaskell" (JSNull, (), True, (3.14 :: Double), "5-tuple")
             -- or
             eval "callbackToHaskell(null, undefined, true, 3.14, \"Eval\")"
 #ifdef MIN_VERSION_jmacro
@@ -238,7 +253,7 @@ main = do
             eval $(litE . stringL . show $ renderJs [jmacro|callbackToHaskell(null, undefined, true, 3.14, "Evaled JMacro")|])
             -- or
             jmfunc <- eval $(litE . stringL . show $ renderJs [jmacroE| \ a b c d e -> callbackToHaskell(a, b, c, d, e) |])
-            let callJM :: (JSNull, (), Bool, Double, String) -> JSM JSValueRef = call jmfunc jmfunc
+            let callJM :: (JSNull, (), Bool, Double, String) -> JSM = call jmfunc jmfunc
             callJM (JSNull, (), True, 3.14, "Via JMacro Evaled Function")
 #endif
 
@@ -248,7 +263,7 @@ main = do
             return ()
 
     -- What is this?
-    elementOnclick heading $ do
+    on heading click $ do
       shiftIsPressed <- mouseShiftKey
       when shiftIsPressed . liftIO $ lazyLoad_freecell webView doc body
 
@@ -265,22 +280,31 @@ validatePrimeMessage p | isPrime p = [shamlet|$newline always
                        | otherwise = [shamlet|$newline always
                                         <b>No</b>, #{p} is not a prime|]
 
-validatePrime :: String -> Text
-validatePrime s = renderHtml $
-  case reads s of
-    [(n, "")] -> validatePrimeMessage n
-    _         -> [shamlet|$newline always
-                    <b>No</b>, that is not a number|]
-
+validatePrime :: Maybe String -> Text
+validatePrime ms =
+    let s = fromMaybe "" ms
+    in renderHtml $
+      case reads s of
+        [(n, "")] -> validatePrimeMessage n
+        _         -> [shamlet|$newline always
+                        <b>No</b>, that is not a number|]
 -- Sometimes you might have something that needs more JavaScript than everything else
 -- you can tell the GHCJS linker to put its dependancies in a sparate file using
 -- a lazyLoad_ prefix
 {-# NOINLINE lazyLoad_freecell #-}
 lazyLoad_freecell webView doc body = do
-    htmlElementSetInnerHTML body $
-      "<div style=\"position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px\" "++
-      "id=\"freecell\" draggable=\"false\"></div>"
+    setInnerHTML body $
+      (Just ("<div style=\"position:relative;left:0px;top:0px;background-color:#e0d0ff;width:700px;height:500px\" "
+             ++ "id=\"freecell\" draggable=\"false\"></div>"))
     unlisten <- engine webView "freecell" =<< mkFreecell
     -- Prevent finalizers running too soon
     forkIO $ forever (threadDelay 1000000000) >> unlisten
     return ()
+
+showJSValue :: JSValue -> String
+showJSValue ValNull = "ValNull"
+showJSValue ValUndefined = "ValUndefined"
+showJSValue (ValBool b) = "ValBool " ++ show b
+showJSValue (ValNumber n) = "ValNumber " ++ show n
+showJSValue (ValString t) = "ValString " ++ show t
+showJSValue (ValObject obj) = "ValObject (Object <JSObjectRef>)"

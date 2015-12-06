@@ -26,17 +26,16 @@ module Demo.DOM (
     helloDOM
 ) where
 
-import GHCJS.DOM.Document (documentGetElementById)
-import GHCJS.DOM.HTMLElement
-       (htmlElementSetInnerText)
+import GHCJS.DOM.Document (getElementById)
+import GHCJS.DOM.HTMLElement (setInnerText)
 import GHCJS.DOM.Types (castToHTMLElement)
 
 helloDOM doc = do
-    maybeExample <- documentGetElementById doc "example"
+    maybeExample <- getElementById doc "example"
     case maybeExample of
-        Just example -> htmlElementSetInnerText
+        Just example -> setInnerText
                                 (castToHTMLElement example)
-                                "Hello World"
+                                (Just "Hello World")
         Nothing      -> putStrLn "Element 'example' not found"
 
 
