@@ -14,7 +14,7 @@ resolver: lts-3.13
 packages:
 - ghcjs-hello
 - webkit-sodium
-- mloc-js
+# - mloc-js
 - location:
     git: git@github.com:ghcjs/jsaddle.git
     commit: 0dcf7e11ad6c5354302b7c30da3ffb1c61040972
