@@ -13,18 +13,20 @@ module Demo.Life (
     life
 ) where
 
+import GHCJS.DOM
 import GHCJS.DOM.Types
-       (HTMLDivElement(..), Document(..), WebView(..))
-import GHCJS.DOM.HTMLElement
-       (htmlElementSetInnerHTML)
+       (HTMLDivElement(..), Document(..))
+import GHCJS.DOM.Element
+       (setInnerHTML)
 import Data.Text.Lazy (unpack)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Hamlet (shamlet)
 import GHCJS.DOM (webViewGetDomDocument)
 import Control.Monad.Reader (ReaderT(..))
-import Language.Javascript.JSC
-       (MakeValueRef(..), MakeStringRef(..), JSF(..), runJSC,
+import Language.Javascript.JSaddle
+       (MakeVal(..), MakeString(..), JSF(..), runJSaddle,
         jsg, js, js1, js4, (<#))
+import Language.Javascript.JSaddle.Value
 import Control.Lens (IndexPreservingGetter, Getter, to, (^.))
 import qualified Data.Foldable as F (Foldable(..), Foldable)
 import Graphics.Gloss
@@ -42,14 +44,14 @@ import GHC.Float (float2Double)
 life :: WebView -> Document -> HTMLDivElement -> IO ()
 life webView doc example = do
     let canvasStyle = "position:absolute; top:60; left:300; visible: hidden"
-    htmlElementSetInnerHTML example . unpack $ renderHtml
+    setInnerHTML example . Just . unpack $ renderHtml
         [shamlet|$newline always
             <div #"lifeDiv">
                 <canvas #"canvas0" width="400" height="400" style="#{canvasStyle}">
                 <canvas #"canvas1" width="400" height="400" style="#{canvasStyle}">
         |]
 
-    let getElementById :: (MakeValueRef s, MakeStringRef s) => s -> JSF
+    let getElementById :: (MakeVal s, MakeString s) => s -> JSF
         getElementById = js1 "getElementById"
         getContext     = js1 "getContext"
         fillStyle      = js "fillStyle"
@@ -58,20 +60,20 @@ life webView doc example = do
         style          = js "style"
         visibility     = js "visibility"
 
-    runJSC webView $ do
+    runJSaddle webView $ do
         document <- jsg "document"
 
         canvas0 <- document ^. getElementById "canvas0"
         canvas1 <- document ^. getElementById "canvas1"
 
         let simulate n (canvas0, canvas1) speed model = do
-                runJSC webView $ do
+                runJSaddle webView $ do
                     ctx <- canvas0 ^. getContext "2d"
-                    ctx ^. fillStyle <# "#FFFFFF" -- if n `mod` 2 == 0 then "#FFFFFF" else "#AA0000"
+                    (ctx <# "fillStyle")  "#FFFFFF" -- if n `mod` 2 == 0 then "#FFFFFF" else "#AA0000"
                     ctx ^. fillRect 0 0 600 400
                     drawPicture ctx (300,200) (render model)
-                    canvas1 ^. style . visibility <# "hidden"
-                    canvas0 ^. style . visibility <# "visible"
+                    ((canvas1 ^. style) <# "visibility") "hidden"
+                    ((canvas0 ^. style) <# "visibility") "visible"
                 threadDelay (1000000 `div` speed)
                 simulate (n+1) (canvas1, canvas0) speed (step () 1.0 model)
             drawPicture ctx orig Blank = return ()
@@ -82,7 +84,7 @@ life webView doc example = do
                                 (realToFrac $ c-a)  (realToFrac $ d-b)
                 return ()
             drawPicture ctx orig (Color c pic) = do
-                ctx ^. fillStyle <# "#0000C0"
+                (ctx <# "fillStyle") "#0000C0"
                 drawPicture ctx orig pic
             drawPicture ctx orig p = liftIO $ print p
         liftIO . forkIO $ simulate 0 (canvas0, canvas1) 10 (parseGrid $ unlines

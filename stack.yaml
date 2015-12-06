@@ -14,14 +14,29 @@ resolver: lts-3.13
 packages:
 - ghcjs-hello
 - webkit-sodium
+- mloc-js
 - location:
     git: git@github.com:ghcjs/jsaddle.git
     commit: 0dcf7e11ad6c5354302b7c30da3ffb1c61040972
+- location:
+    git: git@github.com:k-bx/gloss.git
+    commit: 3e7fd2c51db26e0c798aca378d25818b7eadd91a
+  subdirs:
+    - gloss
+    - gloss-rendering
+  extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
 - ghcjs-dom-0.2.3.0
 - jsaddle-0.3.0.0
+- GLUT-2.7.0.3
+- OpenGL-2.13.1.1
+- webkitgtk3-0.14.1.0
+- webkitgtk3-javascriptcore-0.13.1.0
+- GLURaw-1.5.0.2
+- ObjectName-1.1.0.0
+- OpenGLRaw-2.6.1.0
 
 # Override default flag values for local packages and extra-deps
 flags: {}

@@ -27,8 +27,7 @@ module Demo.LazyLoading (
     lazyLoad_freecell
 ) where
 
-import GHCJS.DOM.HTMLElement
-       (htmlElementSetInnerHTML)
+import GHCJS.DOM.Element (setInnerHTML)
 import Engine (engine)
 import Freecell (mkFreecell)
 import Control.Concurrent (threadDelay, forkIO)
@@ -41,7 +40,7 @@ import Control.Monad (forever)
 --   a loader function that fetches the bundles.
 {-# NOINLINE lazyLoad_freecell #-}
 lazyLoad_freecell webView doc example = do
-    htmlElementSetInnerHTML example $
+    setInnerHTML example $ Just $
       "<div style=\""++style++"\" "++
       "id=\"freecell\" draggable=\"false\"></div>"
     unlisten <- engine webView "freecell" =<< mkFreecell

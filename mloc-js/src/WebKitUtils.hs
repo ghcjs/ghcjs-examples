@@ -17,56 +17,58 @@ module WebKitUtils (
   , createCanvasElement
 ) where
 
+import GHCJS.DOM
 import GHCJS.DOM.Types
-       (HTMLImageElement(..), castToHTMLImageElement, GType, isA,
-        gTypeHTMLImageElement, castToHTMLElement, gTypeHTMLElement,
-        HTMLElement(..), HTMLCanvasElement(..), castToHTMLCanvasElement,
-        gTypeHTMLCanvasElement, HTMLInputElement(..), HTMLDivElement(..),
-        Element(..), DocumentClass, castToHTMLInputElement,
-        gTypeHTMLInputElement, castToHTMLDivElement, gTypeHTMLDivElement)
-import GHCJS.DOM.Document
-       (documentCreateElement, documentGetElementById)
+       -- (HTMLImageElement(..), castToHTMLImageElement, GType, isA,
+       --  gTypeHTMLImageElement, castToHTMLElement, gTypeHTMLElement,
+       --  HTMLElement(..), HTMLCanvasElement(..), castToHTMLCanvasElement,
+       --  gTypeHTMLCanvasElement, HTMLInputElement(..), HTMLDivElement(..),
+       --  Element(..), DocumentClass, castToHTMLInputElement,
+       --  gTypeHTMLInputElement, castToHTMLDivElement, gTypeHTMLDivElement)
+import GHCJS.DOM.Document hiding (getElementById, error, createElement)
+import qualified GHCJS.DOM.Document as GHCJSDoc
+       -- (documentCreateElement, documentGetElementById)
 
 
-getHTMLElementById :: DocumentClass doc => doc -> String -> IO HTMLElement
+getHTMLElementById :: IsDocument doc => doc -> String -> IO HTMLElement
 getHTMLElementById = getElementById gTypeHTMLElement castToHTMLElement
 
-getDivElementById :: DocumentClass doc => doc -> String -> IO HTMLDivElement
+getDivElementById :: IsDocument doc => doc -> String -> IO HTMLDivElement
 getDivElementById = getElementById gTypeHTMLDivElement castToHTMLDivElement
 
-getInputElementById :: DocumentClass doc => doc -> String -> IO HTMLInputElement
+getInputElementById :: IsDocument doc => doc -> String -> IO HTMLInputElement
 getInputElementById = getElementById gTypeHTMLInputElement castToHTMLInputElement
 
-getImageElementById :: DocumentClass doc => doc -> String -> IO HTMLImageElement
+getImageElementById :: IsDocument doc => doc -> String -> IO HTMLImageElement
 getImageElementById = getElementById gTypeHTMLImageElement castToHTMLImageElement
 
-getElementById :: DocumentClass doc
+getElementById :: IsDocument doc
                => GType          -- ^ GObject type we want
                -> (Element -> a) -- ^ Suitable cast operator
                -> doc            -- ^ Document
                -> String         -- ^ ID of the element
                -> IO a
 getElementById gtype cast doc elementId = do
-    maybeElement <- documentGetElementById doc elementId
+    maybeElement <- GHCJSDoc.getElementById doc elementId
     case maybeElement of
         Just e | e `isA` gtype -> return (cast e)
         Just _  -> error $ "Element '" ++ elementId ++ "' found, but wrong type"
         Nothing -> error $ "Element '" ++ elementId ++ "' not found"
 
-createDivElement :: DocumentClass doc => doc -> IO HTMLDivElement
+createDivElement :: IsDocument doc => doc -> IO HTMLDivElement
 createDivElement = createElement gTypeHTMLDivElement castToHTMLDivElement "div"
 
-createCanvasElement :: DocumentClass doc => doc -> IO HTMLCanvasElement
+createCanvasElement :: IsDocument doc => doc -> IO HTMLCanvasElement
 createCanvasElement = createElement gTypeHTMLCanvasElement castToHTMLCanvasElement "canvas"
 
-createElement :: DocumentClass doc
+createElement :: IsDocument doc
               => GType          -- ^ GObject type we want
               -> (Element -> a) -- ^ Suitable cast operator
               -> String         -- ^ element type
               -> doc            -- ^ Document
               -> IO a
 createElement gtype cast elementType doc = do
-    maybeElement <- documentCreateElement doc elementType
+    maybeElement <- GHCJSDoc.createElement doc (Just elementType)
     case maybeElement of
         Just e | e `isA` gtype -> return (cast e)
         Just _  -> error $ "Created an '" ++ elementType ++ "', but it was the wrong type"

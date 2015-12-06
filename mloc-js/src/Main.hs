@@ -23,35 +23,32 @@ import GHCJS.DOM (runWebGUI)
 import GHCJS.DOM
        (webViewGetDomDocument)
 import GHCJS.DOM.Document
-       (documentGetElementById, documentCreateElement, documentGetBody)
+       (getElementById, createElement, getBody)
+import GHCJS.DOM (WebView(..))
 import GHCJS.DOM.Types
-       (Document(..), HTMLDivElement(..), WebView(..), castToHTMLElement,
+       (Document(..), HTMLDivElement(..), castToHTMLElement,
         castToHTMLInputElement, castToHTMLDivElement)
-import GHCJS.DOM.HTMLElement
-       (htmlElementSetInnerText, htmlElementSetInnerHTML)
+import GHCJS.DOM.Element (setInnerHTML)
+import GHCJS.DOM.HTMLElement (setInnerText)
 import Data.Text.Lazy (Text, unpack)
 import Text.Blaze.Html.Renderer.Text (renderHtml)
 import Text.Hamlet (Html, shamlet)
-import GHCJS.DOM.Element
-       (elementOnclick, elementFocus, elementOnkeypress, elementOnkeyup,
-        elementOnkeydown, elementGetStyle)
-import GHCJS.DOM.CSSStyleDeclaration
-       (cssStyleDeclarationSetProperty)
-import GHCJS.DOM.Node
-       (nodeAppendChild, nodeInsertBefore)
+import GHCJS.DOM.EventM (on)
+import GHCJS.DOM.Element (click, focus, keyPress, keyUp, keyDown, getStyle)
+import GHCJS.DOM.CSSStyleDeclaration (setProperty)
+import GHCJS.DOM.Node (appendChild, insertBefore)
 import Control.Monad.Reader (ReaderT(..))
-import Language.Javascript.JSC
-       (call, JSC, JSNull(..), evalJM, val, array, eval, new, fun,
+import Language.Javascript.JSaddle
+       (call, JSNull(..), val, array, eval, new, fun,
         valToText, valToNumber, deRefVal, (<#), (#), (!!), js, jsg)
 import Control.Lens ((^.))
 import Control.Monad.Trans (liftIO)
 import Control.Concurrent
        (putMVar, tryTakeMVar, takeMVar, newEmptyMVar, threadDelay, forkIO)
 import Control.Monad (when, forever)
-import GHCJS.DOM.HTMLInputElement
-       (htmlInputElementGetValue)
+import GHCJS.DOM.HTMLInputElement (getValue)
 import System.IO (hPutStrLn, stdout, hFlush, stderr)
-import Language.Javascript.JSC.Value (JSValueRef, JSValue(..))
+import Language.Javascript.JSaddle.Value (JSValue(..))
 import qualified Data.Text as T (pack)
 import Language.Javascript.JMacro (jLam, ToJExpr(..), JStat(..))
 import GHCJS.DOM.EventM (mouseShiftKey)
@@ -69,7 +66,7 @@ import Demo.LazyLoading
 mainPage :: WebView -> Document -> HTMLDivElement -> IO ()
 mainPage webView doc div = do
     -- Lets use some Hamlet to replace HTerm with some HTML
-    htmlElementSetInnerHTML div . unpack $ renderHtml [shamlet|$newline always
+    setInnerHTML div . Just . unpack $ renderHtml [shamlet|$newline always
         <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.0/css/bootstrap-combined.min.css" rel="stylesheet">
         <h1 #heading>MLOC.JS GHCJS Examples
         <div .row>
@@ -100,7 +97,7 @@ mainPage webView doc div = do
   where
     menuItem name f = do
         item <- getHTMLElementById doc name
-        elementOnclick item . liftIO $ f
+        on item click (liftIO $ f)
 
 main :: IO ()
 main = do
@@ -109,23 +106,23 @@ main = do
   runWebGUI $ \ webView -> do
     -- WebKitGtk provides the normal W3C DOM functions
     Just doc <- webViewGetDomDocument webView
-    Just body <- documentGetBody doc
+    Just body <- getBody doc
 
     -- Create a div to put our page content in
-    Just div <- fmap castToHTMLDivElement <$> documentCreateElement doc "div"
+    Just div <- fmap castToHTMLDivElement <$> createElement doc (Just "div")
 
     -- Now we need to add this div to the document body
     -- If we are in the browser then let's shrink the terminal window to make room
-    mbTerminal <- fmap castToHTMLDivElement <$> documentGetElementById doc "terminal"
+    mbTerminal <- fmap castToHTMLDivElement <$> getElementById doc "terminal"
     case mbTerminal of
       Just terminal -> do
-        Just style <- elementGetStyle terminal
-        cssStyleDeclarationSetProperty style "height" "200px" ""
-        cssStyleDeclarationSetProperty style "position" "absolute" ""
-        cssStyleDeclarationSetProperty style "bottom" "0" ""
-        nodeInsertBefore body (Just div) (Just terminal)
+        Just style <- getStyle terminal
+        setProperty style "height" (Just "200px") ""
+        setProperty style "position" (Just "absolute") ""
+        setProperty style "bottom" (Just "0") ""
+        insertBefore body (Just div) (Just terminal)
       _ -> do
-        nodeAppendChild body (Just div)
+        appendChild body (Just div)
 
     -- Load the main page
     mainPage webView doc div
